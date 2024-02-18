@@ -1,0 +1,58 @@
+<!--Con esta parte de codigo vamos a llamar a base html-->
+{% extends "base.html" %}
+
+<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
+{% load static %}
+
+<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
+{% block content %}
+<div>
+
+    <br>
+
+    <div class = "card">
+        
+        <div class = "card-body">
+            <h4 class="card-title">Panel de los Proveedores</h4>
+            <p class="card-text">Listado de proveedores</p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre empresa</th>
+                        <th>Contacto</th>
+                        <th>Correo</th>
+                        <th>Telefono</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    {% for proveedores in proveedores %}
+                    <tr>
+                        <td>{{proveedores.id}}</td>
+                        <td>{{proveedores.nombre_empresa}}</td>
+                        <td>{{proveedores.contacto}}</td>
+                        <td>{{proveedores.correo_contacto}}</td>
+                        <td>{{proveedores.telefono_contacto}}</td>
+                        <td> <a name="" id="" class="btn btn-info" href="{% url 'UpdateProveedores' proveedores.id %}" role="button">Editar</a>
+                            |
+                            <a name="" id="" class="btn btn-danger" href="{% url 'DeleteProveedores' proveedores.id %}" role="button">Borrar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+
+        </div>
+        <div class="card-footer text-muted">
+            <Footer>
+                <a name="" id="" class="btn btn-success" href="{% url 'CreateProveedores' %}" role="button">Agregar nuevo proveedor</a>
+            </Footer>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

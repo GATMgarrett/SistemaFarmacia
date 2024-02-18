@@ -1,0 +1,62 @@
+<!--Con esta parte de codigo vamos a llamar a base html-->
+{% extends "base.html" %}
+
+<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
+{% load static %}
+
+<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
+{% block content %}
+<div>
+    
+    <br>
+
+    <div class = "card">
+        
+        <div class = "card-body">
+            <h4 class="card-title">Panel de los medicamentos</h4>
+            <p class="card-text">Listado de medicamentos regitrados</p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Descripcion</th>
+                        <th>Precio</th>
+                        <th>Fecha de vencimiento</th>
+                        <th>Stock</th>
+                        <th>Laboratorio</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    {% for medicamentos in medicamentos %}
+                    <tr>
+                        <td>{{medicamentos.id}}</td>
+                        <td>{{medicamentos.nombre}}</td>
+                        <td>{{medicamentos.descripcion}}</td>
+                        <td>{{medicamentos.precio}} bs</td>
+                        <td>{{medicamentos.fecha_vencimiento}}</td>
+                        <td>{{medicamentos.stock}}</td>
+                        <td>{{medicamentos.laboratorio_id}}</td>
+                        <td> <a name="" id="" class="btn btn-info" href="{% url 'UpdateMedicamentos' medicamentos.id %}" role="button">Editar</a>
+                            
+                            <a name="" id="" class="btn btn-danger" href="{% url 'DeleteMedicamentos' medicamentos.id %}" role="button">Borrar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+
+        </div>
+        <div class="card-footer text-muted">
+            <Footer>
+                <a name="" id="" class="btn btn-success" href="{% url 'CreateMedicamentos' %}" role="button">Agregar nuevo medicamento</a>
+            </Footer>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
