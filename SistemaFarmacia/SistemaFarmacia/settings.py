@@ -38,7 +38,8 @@ SECRET_KEY = 'django-insecure-k42mpgf0w&44z^*ckh^isqoqgfa^h(@4vk)@1)y$xthb)o@3-%
 DEBUG = True
 
 # En esta parte vamos a configurar que el sistema corra a nivel local por el momento del desarrollo
-ALLOWED_HOSTS = ['localhost']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
 
 # Vamos a redirigir la ruta URL del LogIn
 LOGIN_REDIRECT_URL = '/'

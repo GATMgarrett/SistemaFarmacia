@@ -1,5 +1,12 @@
-myvenv/
+# Entorno virtual
+env/
+
+# Archivos Python compilados
 __pycache__/
 *.pyc
-db.sqlite3  # Aunque uses MySQL, es buena práctica incluirlo en caso de usar SQLite para pruebas
-.DS_Store    # Si estás en macOS
+
+# Base de datos SQLite (si usas MySQL para producción)
+db.sqlite3
+
+# Archivos del sistema en macOS
+.DS_Store
