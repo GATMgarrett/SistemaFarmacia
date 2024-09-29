@@ -17,7 +17,7 @@ class UsuarioForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'email', 'password')
+        fields = ('username', 'first_name', 'last_name', 'email', 'password', 'grupo')
         widgets = {
             'password': forms.PasswordInput(),  # Esto asegura que el campo de la contraseña se muestre como tal
         }
