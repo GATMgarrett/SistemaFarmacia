@@ -67,13 +67,15 @@ def create_user_view(request):
     if request.method == 'POST':
         formulario = UsuarioForm(request.POST)
         if formulario.is_valid():
-            user = formulario.save(commit=False)
-            user.set_password('password')  # Define una manera de manejar la contraseña
-            user.save()
-            user.groups.add(formulario.cleaned_data['grupo'])
-            return redirect('Usuarios')
+            user = formulario.save(commit=False)  # No se guarda todavía en la base de datos
+            user.set_password(formulario.cleaned_data['password'])  # Usa la contraseña del formulario
+            user.save()  # Guarda el usuario en la base de datos
+            if formulario.cleaned_data['grupo']:
+                user.groups.add(formulario.cleaned_data['grupo'])  # Asigna el grupo seleccionado
+            return redirect('Usuarios')  # Redirige a la lista de usuarios o a donde necesites
     else:
-        formulario = UsuarioForm()
+        formulario = UsuarioForm()  # Crea una nueva instancia del formulario
+
     return render(request, 'usuariosCRUD/create_user.html', {'formulario': formulario})
 
 # Vista para la edicion de los ususarios

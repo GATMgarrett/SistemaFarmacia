@@ -6,7 +6,6 @@
   <div class="mb-3">
     <label for="id_{{ campo.name }}" class="form-label">{{ campo.label }}:</label>
     {% if campo.name == 'grupo' %}
-      <!-- Asumiendo que grupo es un campo de tipo ModelChoiceField -->
       <select name="{{ campo.name }}" id="id_{{ campo.name }}" class="form-control django-select2">
         {% for group in campo.field.queryset %}
           <option value="{{ group.id }}" {% if campo.value == group.id %} selected {% endif %}>{{ group.name }}</option>
@@ -28,55 +27,21 @@
   </div>
   {% endfor %}
 
-  <input name="" id="" class="btn btn-success" type="submit" value="Enviar información">
-  <a name="" id="" class="btn btn-primary" href="{% url 'Usuarios' %}" role="button">Cancelar</a>
+  <input id="submit-button" class="btn btn-success" type="submit" value="Enviar información">
+  <a class="btn btn-primary" href="{% url 'Usuarios' %}" role="button">Cancelar</a>
 </form>
 
 <!-- Asegúrate de incluir los archivos CSS y JS de Select2 -->
 <link href="{% static 'select2/css/select2.min.css' %}" rel="stylesheet" />
+<script src="{% static 'js/jquery.min.js' %}"></script>
 <script src="{% static 'select2/js/select2.min.js' %}"></script>
-<script src="{% static 'js/jquery.min.js' %}"></script> <!-- Asegúrate de que jQuery esté incluido y antes de select2.min.js -->
 
 <script>
   $(document).ready(function() {
     $('.django-select2').select2({
-      // Puedes agregar opciones adicionales aquí para personalizar el Select2
       placeholder: "Seleccione un grupo",
       allowClear: true,
-      minimumInputLength: 1  // Requerirá al menos un carácter para empezar a filtrar
+      minimumInputLength: 1
     });
   });
 </script>
-
-
-
-<!--
-<form enctype="multipart/form-data" method="post">
-
-{% csrf_token %}
-{% for campo in formulario %}
-
-<div class="mb-3">
-  <label for="" class="form-label">{{ campo.label }}:</label>
-  <input 
-    type="{{ campo.field.widget.input_type }}"
-    class="form-control" 
-    name="{{ campo.name }}" 
-    id="" 
-    aria-describedby="helpId" 
-    placeholder="{{ campo.label }}"
-    value={{ campo.value | default:'' }}
-  >
-</div>
--->
-<!--Esta parte la vamos a usar para controlar los errores
-<div class="col-12 help-text">{{campo.errors}}</div>
-
-{% endfor %}
--->
-<!--Este boton es para poder confirmar el envio del formulario
-<input name="" id="" class="btn btn-success" type="submit" value="Enviar informacion">
-Y este otro boton sera para cancelar la acccion de editar, tambien de crear
-<a name="" id="" class="btn btn-primary" href="{% url 'Usuarios' %}" role="button">Cancelar</a>
-
-</form>-->
