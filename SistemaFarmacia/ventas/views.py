@@ -58,11 +58,31 @@ def delete_laboratorio_view(request, id):
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los usuarios
 # Vista de los usuarios
 def usuarios_view(request):
-    usuarios = User.objects.all().prefetch_related('groups')
-    return render(request, 'usuarios.html', {'usuarios': usuarios})
+    # Usuarios activos
+    usuarios_activos = User.objects.filter(is_active=True).prefetch_related('groups')
+    # Usuarios inactivos
+    usuarios_inactivos = User.objects.filter(is_active=False).prefetch_related('groups')
+    
+    return render(request, 'usuarios.html', {
+        'usuarios_activos': usuarios_activos,
+        'usuarios_inactivos': usuarios_inactivos
+    })
 
 # Vista para la creacion de los ususarios
 
+# Vista de los usuarios
+def usuarios_view(request):
+    # Usuarios activos
+    usuarios_activos = User.objects.filter(is_active=True).prefetch_related('groups')
+    # Usuarios inactivos
+    usuarios_inactivos = User.objects.filter(is_active=False).prefetch_related('groups')
+    
+    return render(request, 'usuarios.html', {
+        'usuarios_activos': usuarios_activos,
+        'usuarios_inactivos': usuarios_inactivos
+    })
+
+# Vista para la creación de los usuarios
 def create_user_view(request):
     if request.method == 'POST':
         formulario = UsuarioForm(request.POST)
@@ -78,8 +98,7 @@ def create_user_view(request):
 
     return render(request, 'usuariosCRUD/create_user.html', {'formulario': formulario})
 
-# Vista para la edicion de los ususarios
-
+# Vista para la edición de los usuarios
 def update_user_view(request, id):
     usuario = User.objects.get(id=id)
     formulario = UsuarioForm(request.POST or None, request.FILES or None, instance=usuario)
@@ -88,11 +107,18 @@ def update_user_view(request, id):
         return redirect('Usuarios')
     return render(request, 'usuariosCRUD/update_user.html', {'formulario': formulario})
 
-# Vista para la eliminacion de los usuarios
-
+# Vista para la eliminación de los usuarios
 def delete_user_view(request, id):
     usuario = User.objects.get(id=id)
-    usuario.delete()
+    usuario.is_active = False  # Desactivar el usuario en lugar de eliminarlo
+    usuario.save()
+    return redirect('Usuarios')
+
+# Vista para la activación de los usuarios
+def activate_user_view(request, id):
+    usuario = User.objects.get(id=id)
+    usuario.is_active = True  # Activar el usuario
+    usuario.save()
     return redirect('Usuarios')
 
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los proveedores

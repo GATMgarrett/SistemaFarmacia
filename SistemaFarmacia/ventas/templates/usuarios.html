@@ -10,11 +10,11 @@
 
     <br>
 
-    <div class = "card">
-        
-        <div class = "card-body">
-            <h4 class="card-title">Panel de Usuarios</h4>
-            <p class="card-text">Configuración de Cuentas de Usuario</p>
+    <!-- Tabla de usuarios activos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Panel de Usuarios Activos</h4>
+            <p class="card-text">Configuración de Cuentas de Usuario Activos</p>
 
             <table class="table">
                 <thead>
@@ -24,21 +24,20 @@
                         <th>Nombre</th>
                         <th>Apellido</th>
                         <th>Correo</th>
-                        <th>Fecha de creacion</th>
+                        <th>Fecha de creación</th>
                         <th>Rol</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-
-                    {% for usuario in usuarios %}
+                    {% for usuario in usuarios_activos %}
                     <tr>
-                        <td>{{usuario.id}}</td>
-                        <td>{{usuario.username}}</td>
-                        <td>{{usuario.first_name}}</td>
-                        <td>{{usuario.last_name}}</td>
-                        <td>{{usuario.email}}</td>
-                        <td>{{usuario.date_joined}}</td>
+                        <td>{{ usuario.id }}</td>
+                        <td>{{ usuario.username }}</td>
+                        <td>{{ usuario.first_name }}</td>
+                        <td>{{ usuario.last_name }}</td>
+                        <td>{{ usuario.email }}</td>
+                        <td>{{ usuario.date_joined }}</td>
                         <td>
                             {% for group in usuario.groups.all %}
                                 {{ group.name }}
@@ -46,16 +45,15 @@
                                 Sin rol
                             {% endfor %}
                         </td>
-                        <td> <a name="" id="" class="btn btn-info" href="{% url 'UpdateUsuarios' usuario.id %}" role="button">Editar</a>
+                        <td>
+                            <a name="" id="" class="btn btn-info" href="{% url 'UpdateUsuarios' usuario.id %}" role="button">Editar</a>
                             |
-                            <a name="" id="" class="btn btn-danger" href="{% url 'DeleteUsuarios' usuario.id %}" role="button">Borrar</a>
+                            <a name="" id="" class="btn btn-danger" href="{% url 'DeleteUsuarios' usuario.id %}" role="button">Desactivar</a>
                         </td>
                     </tr>
                     {% endfor %}
-
                 </tbody>
             </table>
-
         </div>
         <div class="card-footer text-muted">
             <Footer>
@@ -63,7 +61,53 @@
             </Footer>
         </div>
     </div>
-   
+
+    <br><br>
+
+    <!-- Tabla de usuarios inactivos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Usuarios Inactivos</h4>
+            <p class="card-text">Lista de usuarios inactivos</p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th>Apellido</th>
+                        <th>Correo</th>
+                        <th>Fecha de creación</th>
+                        <th>Rol</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios_inactivos %}
+                    <tr>
+                        <td>{{ usuario.id }}</td>
+                        <td>{{ usuario.username }}</td>
+                        <td>{{ usuario.first_name }}</td>
+                        <td>{{ usuario.last_name }}</td>
+                        <td>{{ usuario.email }}</td>
+                        <td>{{ usuario.date_joined }}</td>
+                        <td>
+                            {% for group in usuario.groups.all %}
+                                {{ group.name }}
+                            {% empty %}
+                                Sin rol
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <a name="" id="" class="btn btn-info" href="{% url 'ActivateUsuarios' usuario.id %}" role="button">Activar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 </div>
 {% endblock %}

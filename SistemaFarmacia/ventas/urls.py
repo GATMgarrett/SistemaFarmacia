@@ -19,6 +19,8 @@ urlpatterns = [
     path('usuario/create/', views.create_user_view, name='CreateUsuarios'),
     path('deleteUsuario/<int:id>', views.delete_user_view, name='DeleteUsuarios'),
     path('usuario/update/<int:id>', views.update_user_view, name='UpdateUsuarios'),
+    path('activateUsuario/<int:id>', views.activate_user_view, name='ActivateUsuarios'),
+
     
     # urls for the views of the suppliers (proveedores)
     path('proveedores/', views.proveedores_view, name='Proveedores'),
