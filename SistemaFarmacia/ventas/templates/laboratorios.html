@@ -10,50 +10,86 @@
 
     <br>
 
-    <div class = "card">
-        
-        <div class = "card-body">
-            <h4 class="card-title">Panel de Laboratorios</h4>
-            <p class="card-text">Configuración de Cuentas de Laboratio</p>
+    <!-- Tabla de laboratorios activos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Panel de Laboratorios Activos</h4>
+            <p class="card-text">Listado de laboratorios activos</p>
 
             <table class="table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Nombre del laboratorio</th>
-                        <th>Telefono</th>
-                        <th>Direccion</th>
+                        <th>Teléfono</th>
+                        <th>Dirección</th>
                         <th>Abreviatura</th>
-                        <th>Nit</th>
+                        <th>NIT</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-
-                    {% for laboratorios in laboratorios %}
+                    {% for laboratorio in laboratorios_activos %}
                     <tr>
-                        <td>{{laboratorios.id}}</td>
-                        <td>{{laboratorios.nombre_laboratorio}}</td>
-                        <td>{{laboratorios.telefono_lab}}</td>
-                        <td>{{laboratorios.direccion}}</td>
-                        <td>{{laboratorios.abreviatura_lab}}</td>
-                        <td>{{laboratorios.nit_lab}}</td>
-                        <!--///////////////////////////////////////////estos botones todavia estan con la conexion de usuarios-->
-                        <td> <a name="" id="" class="btn btn-info" href="{% url 'UpdateLaboratorios' laboratorios.id %}" role="button">Editar</a>
+                        <td>{{ laboratorio.id }}</td>
+                        <td>{{ laboratorio.nombre_laboratorio }}</td>
+                        <td>{{ laboratorio.telefono_lab }}</td>
+                        <td>{{ laboratorio.direccion }}</td>
+                        <td>{{ laboratorio.abreviatura_lab }}</td>
+                        <td>{{ laboratorio.nit_lab }}</td>
+                        <td>
+                            <a class="btn btn-info" href="{% url 'UpdateLaboratorio' laboratorio.id %}" role="button">Editar</a>
                             |
-                            <a name="" id="" class="btn btn-danger" href="{% url 'DeleteLaboratorios' laboratorios.id %}" role="button">Borrar</a>
+                            <a class="btn btn-danger" href="{% url 'DeleteLaboratorio' laboratorio.id %}" role="button">Desactivar</a>
                         </td>
                     </tr>
                     {% endfor %}
-
                 </tbody>
             </table>
-
         </div>
         <div class="card-footer text-muted">
             <Footer>
-                <a name="" id="" class="btn btn-success" href="{% url 'CreateLaboratorios' %}" role="button">Agregar nuevo laboratorio</a>
+                <a class="btn btn-success" href="{% url 'CreateLaboratorio' %}" role="button">Agregar nuevo laboratorio</a>
             </Footer>
+        </div>
+    </div>
+
+    <br><br>
+
+    <!-- Tabla de laboratorios inactivos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Laboratorios Inactivos</h4>
+            <p class="card-text">Lista de laboratorios inactivos</p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre del laboratorio</th>
+                        <th>Teléfono</th>
+                        <th>Dirección</th>
+                        <th>Abreviatura</th>
+                        <th>NIT</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for laboratorio in laboratorios_inactivos %}
+                    <tr>
+                        <td>{{ laboratorio.id }}</td>
+                        <td>{{ laboratorio.nombre_laboratorio }}</td>
+                        <td>{{ laboratorio.telefono_lab }}</td>
+                        <td>{{ laboratorio.direccion }}</td>
+                        <td>{{ laboratorio.abreviatura_lab }}</td>
+                        <td>{{ laboratorio.nit_lab }}</td>
+                        <td>
+                            <a class="btn btn-info" href="{% url 'ActivateLaboratorio' laboratorio.id %}" role="button">Activar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 

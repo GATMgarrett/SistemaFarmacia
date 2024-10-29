@@ -1,56 +1,83 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
-
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
 
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
 <div>
-
     <br>
 
-    <div class = "card">
-        
-        <div class = "card-body">
-            <h4 class="card-title">Panel de los Proveedores</h4>
-            <p class="card-text">Listado de proveedores</p>
+    <!-- Tabla de proveedores activos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Panel de Proveedores Activos</h4>
+            <p class="card-text">Configuración de Proveedores Activos</p>
 
             <table class="table">
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Nombre empresa</th>
+                        <th>Nombre Empresa</th>
                         <th>Contacto</th>
                         <th>Correo</th>
-                        <th>Telefono</th>
+                        <th>Teléfono</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-
-                    {% for proveedores in proveedores %}
+                    {% for proveedor in proveedores_activos %}
                     <tr>
-                        <td>{{proveedores.id}}</td>
-                        <td>{{proveedores.nombre_empresa}}</td>
-                        <td>{{proveedores.contacto}}</td>
-                        <td>{{proveedores.correo_contacto}}</td>
-                        <td>{{proveedores.telefono_contacto}}</td>
-                        <td> <a name="" id="" class="btn btn-info" href="{% url 'UpdateProveedores' proveedores.id %}" role="button">Editar</a>
-                            |
-                            <a name="" id="" class="btn btn-danger" href="{% url 'DeleteProveedores' proveedores.id %}" role="button">Borrar</a>
+                        <td>{{ proveedor.id }}</td>
+                        <td>{{ proveedor.nombre_empresa }}</td>
+                        <td>{{ proveedor.contacto }}</td>
+                        <td>{{ proveedor.correo_contacto }}</td>
+                        <td>{{ proveedor.telefono_contacto }}</td>
+                        <td>
+                            <a class="btn btn-info" href="{% url 'UpdateProveedores' proveedor.id %}">Editar</a> |
+                            <a class="btn btn-danger" href="{% url 'DeleteProveedores' proveedor.id %}">Desactivar</a>
                         </td>
                     </tr>
                     {% endfor %}
-
                 </tbody>
             </table>
-
         </div>
         <div class="card-footer text-muted">
-            <Footer>
-                <a name="" id="" class="btn btn-success" href="{% url 'CreateProveedores' %}" role="button">Agregar nuevo proveedor</a>
-            </Footer>
+            <a class="btn btn-success" href="{% url 'CreateProveedores' %}">Agregar nuevo proveedor</a>
+        </div>
+    </div>
+
+    <br><br>
+
+    <!-- Tabla de proveedores inactivos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Proveedores Inactivos</h4>
+            <p class="card-text">Lista de proveedores inactivos</p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre Empresa</th>
+                        <th>Contacto</th>
+                        <th>Correo</th>
+                        <th>Teléfono</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proveedor in proveedores_inactivos %}
+                    <tr>
+                        <td>{{ proveedor.id }}</td>
+                        <td>{{ proveedor.nombre_empresa }}</td>
+                        <td>{{ proveedor.contacto }}</td>
+                        <td>{{ proveedor.correo_contacto }}</td>
+                        <td>{{ proveedor.telefono_contacto }}</td>
+                        <td>
+                            <a class="btn btn-info" href="{% url 'ActivateProveedores' proveedor.id %}">Activar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 

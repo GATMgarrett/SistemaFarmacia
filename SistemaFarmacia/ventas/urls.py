@@ -20,7 +20,6 @@ urlpatterns = [
     path('deleteUsuario/<int:id>', views.delete_user_view, name='DeleteUsuarios'),
     path('usuario/update/<int:id>', views.update_user_view, name='UpdateUsuarios'),
     path('activateUsuario/<int:id>', views.activate_user_view, name='ActivateUsuarios'),
-
     
     # urls for the views of the suppliers (proveedores)
     path('proveedores/', views.proveedores_view, name='Proveedores'),
@@ -28,17 +27,19 @@ urlpatterns = [
     path('proveedores/update/<int:id>', views.update_proveedor_view, name='UpdateProveedores'),
     path('deleteProveedores/<int:id>', views.delete_proveedor_view, name='DeleteProveedores'),
     
-    # urls for the views of the (laboratorios)
+    # URLs for the views of (laboratorios)
     path('laboratorios/', views.laboratorios_view, name='Laboratorios'),
-    path('laboratorio/create/', views.create_laboratorios_view, name='CreateLaboratorios'),
-    path('laboratorio/update/<int:id>', views.update_laboratorios_view, name='UpdateLaboratorios'),
-    path('deleteLaboratorio/<int:id>', views.delete_laboratorio_view, name='DeleteLaboratorios'),
+    path('laboratorio/create/', views.create_laboratorio_view, name='CreateLaboratorio'),
+    path('laboratorio/update/<int:id>/', views.update_laboratorio_view, name='UpdateLaboratorio'),
+    path('laboratorio/delete/<int:id>/', views.delete_laboratorio_view, name='DeleteLaboratorio'),
+    path('laboratorio/activate/<int:id>/', views.activate_laboratorio_view, name='ActivateLaboratorio'),
     
-    # urls for the views of the (medicamentos)
+    # URLs para las vistas de los medicamentos
     path('inventario/', views.medicamentos_view, name='Medicamentos'),
     path('inventario/create/', views.create_medicamento_view, name='CreateMedicamentos'),
-    path('inventario/update/<int:id>', views.update_medicamento_view, name='UpdateMedicamentos'),
-    path('deleteInventario/<int:id>', views.delete_medicamento_view, name='DeleteMedicamentos'),
+    path('inventario/update/<int:id>/', views.update_medicamento_view, name='UpdateMedicamentos'),
+    path('inventario/delete/<int:id>/', views.delete_medicamento_view, name='DeleteMedicamentos'),  # Cambiado para reflejar la estructura
+    path('inventario/activate/<int:id>/', views.activate_medicamento_view, name='ActivateMedicamentos'),  # Nueva ruta para activar medicamentos
     
     # dashboard
     path('Dashboard/', views.dashboard_view, name='Dashboard'),

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
@@ -33,27 +33,38 @@ def compras_view(request):
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los laboratorios
 # Vista de los laboratorios
 def laboratorios_view(request):
-    laboratorios = Laboratorios.objects.all()
-    return render(request, 'laboratorios.html', {'laboratorios': laboratorios})
-# Vista para la creacion de los laboratorios
-def create_laboratorios_view(request):
+    laboratorios_activos = Laboratorios.objects.filter(activo=True)
+    laboratorios_inactivos = Laboratorios.objects.filter(activo=False)
+    return render(request, 'laboratorios.html', {
+        'laboratorios_activos': laboratorios_activos,
+        'laboratorios_inactivos': laboratorios_inactivos
+    })
+# Vista para la creación de laboratorios
+def create_laboratorio_view(request):
     formulario = LaboratorioForm(request.POST or None, request.FILES or None)
     if formulario.is_valid():
         formulario.save()
         return redirect('Laboratorios')
-    return render(request, 'laboratoriosCRUD/create_lab.html', {'formulario': formulario})
-# Vista para la edicion de los laboratorios
-def update_laboratorios_view(request, id):
-    laboratorios = Laboratorios.objects.get(id=id)
-    formulario = LaboratorioForm(request.POST or None, request.FILES or None, instance=laboratorios)
-    if formulario.is_valid() and request.POST:
+    return render(request, 'laboratoriosCRUD/create_laboratorio.html', {'formulario': formulario})
+# Vista para la edición de laboratorios
+def update_laboratorio_view(request, id):
+    laboratorio = get_object_or_404(Laboratorios, id=id)
+    formulario = LaboratorioForm(request.POST or None, request.FILES or None, instance=laboratorio)
+    if formulario.is_valid():
         formulario.save()
         return redirect('Laboratorios')
-    return render(request, 'laboratoriosCRUD/create_lab.html', {'formulario': formulario})
-# Vista para la eliminacion de los laboratorios
+    return render(request, 'laboratoriosCRUD/update_laboratorio.html', {'formulario': formulario})
+# Vista para la eliminación lógica de laboratorios
 def delete_laboratorio_view(request, id):
-    laboratorios = Laboratorios.objects.get(id=id)
-    laboratorios.delete()
+    laboratorio = get_object_or_404(Laboratorios, id=id)
+    laboratorio.activo = False
+    laboratorio.save()
+    return redirect('Laboratorios')
+# Vista para reactivar laboratorios inactivos
+def activate_laboratorio_view(request, id):
+    laboratorio = get_object_or_404(Laboratorios, id=id)
+    laboratorio.activo = True
+    laboratorio.save()
     return redirect('Laboratorios')
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los usuarios
 # Vista de los usuarios
@@ -124,8 +135,12 @@ def activate_user_view(request, id):
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los proveedores
 # Vista de los proveedores
 def proveedores_view(request):
-    proveedores = Proveedores.objects.all()
-    return render(request, 'proveedores.html', {'proveedores': proveedores})
+    proveedores_activos = Proveedores.objects.filter(activo=True)
+    proveedores_inactivos = Proveedores.objects.filter(activo=False)
+    return render(request, 'proveedores.html', {
+        'proveedores_activos': proveedores_activos,
+        'proveedores_inactivos': proveedores_inactivos
+    })
 # Vista para la creacion de los proveedores
 def create_proveedor_view(request):
     formulario = ProveedorForm(request.POST or None, request.FILES or None)
@@ -141,36 +156,51 @@ def update_proveedor_view(request, id):
         formulario.save()
         return redirect('Proveedores')
     return render(request, 'proveedoresCRUD/update_proveedor.html', {'formulario': formulario})
-# Vista para la eliminacion de los proveedores
+# Vista para la eliminación lógica de proveedores
 def delete_proveedor_view(request, id):
-    proveedores = Proveedores.objects.get(id=id)
-    proveedores.delete()
+    proveedor = Proveedores.objects.get(id=id)
+    proveedor.activo = False  # Establece el proveedor como inactivo
+    proveedor.save()
     return redirect('Proveedores')
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los medicamentos(inventario)
 # Vista de los medicamentos
 def medicamentos_view(request):
-    medicamentos = Medicamentos.objects.all()
-    return render(request, 'inventario.html', {'medicamentos': medicamentos})
-# Vista para la creacion de los proveedores
+    # Medicamentos activos
+    medicamentos_activos = Medicamentos.objects.filter(activo=True)
+    # Medicamentos inactivos
+    medicamentos_inactivos = Medicamentos.objects.filter(activo=False)
+    
+    return render(request, 'inventario.html', {
+        'medicamentos_activos': medicamentos_activos,
+        'medicamentos_inactivos': medicamentos_inactivos
+    })
+# Vista para la creación de medicamentos
 def create_medicamento_view(request):
     formulario = MedicamentoForm(request.POST or None, request.FILES or None)
     if formulario.is_valid():
         formulario.save()
-        return redirect('Medicamentos')
+        return redirect('Medicamentos')  # Cambia según tu URL de lista
     return render(request, 'inventarioCRUD/create_medicamento.html', {'formulario': formulario})
-# Vista para la edicion de los proveedores
+# Vista para la edición de medicamentos
 def update_medicamento_view(request, id):
-    medicamentos = Medicamentos.objects.get(id=id)
-    formulario = MedicamentoForm(request.POST or None, request.FILES or None, instance=medicamentos)
+    medicamento = Medicamentos.objects.get(id=id)
+    formulario = MedicamentoForm(request.POST or None, request.FILES or None, instance=medicamento)
     if formulario.is_valid() and request.POST:
         formulario.save()
-        return redirect('Medicamentos')
+        return redirect('Medicamentos')  # Cambia según tu URL de lista
     return render(request, 'inventarioCRUD/update_medicamento.html', {'formulario': formulario})
-# Vista para la eliminacion de los proveedores
+# Vista para la eliminación lógica de medicamentos
 def delete_medicamento_view(request, id):
     medicamento = Medicamentos.objects.get(id=id)
-    medicamento.delete()
-    return redirect('Medicamentos')
+    medicamento.activo = False  # Establecer como inactivo
+    medicamento.save()
+    return redirect('Medicamentos')  # Cambia según tu URL de lista
+# Vista para la activación de medicamentos (si deseas restaurarlos)
+def activate_medicamento_view(request, id):
+    medicamento = Medicamentos.objects.get(id=id)
+    medicamento.activo = True  # Activar el medicamento
+    medicamento.save()
+    return redirect('Medicamentos')  # Cambia según tu URL de lista
 
 
 

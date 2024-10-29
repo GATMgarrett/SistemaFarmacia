@@ -1,60 +1,93 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
-
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
 
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
 <div>
-    
     <br>
 
-    <div class = "card">
-        
-        <div class = "card-body">
-            <h4 class="card-title">Panel de los medicamentos</h4>
-            <p class="card-text">Listado de medicamentos regitrados</p>
+    <!-- Tabla de Medicamentos Activos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Panel de Medicamentos Activos</h4>
+            <p class="card-text">Listado de medicamentos registrados</p>
 
             <table class="table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Nombre</th>
-                        <th>Descripcion</th>
+                        <th>Descripción</th>
                         <th>Precio</th>
-                        <th>Fecha de vencimiento</th>
+                        <th>Fecha de Vencimiento</th>
                         <th>Stock</th>
                         <th>Laboratorio</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-
-                    {% for medicamentos in medicamentos %}
+                    {% for medicamento in medicamentos_activos %}
                     <tr>
-                        <td>{{medicamentos.id}}</td>
-                        <td>{{medicamentos.nombre}}</td>
-                        <td>{{medicamentos.descripcion}}</td>
-                        <td>{{medicamentos.precio}} bs</td>
-                        <td>{{medicamentos.fecha_vencimiento}}</td>
-                        <td>{{medicamentos.stock}}</td>
-                        <td>{{medicamentos.laboratorio_id}}</td>
-                        <td> <a name="" id="" class="btn btn-info" href="{% url 'UpdateMedicamentos' medicamentos.id %}" role="button">Editar</a>
-                            
-                            <a name="" id="" class="btn btn-danger" href="{% url 'DeleteMedicamentos' medicamentos.id %}" role="button">Borrar</a>
+                        <td>{{ medicamento.id }}</td>
+                        <td>{{ medicamento.nombre }}</td>
+                        <td>{{ medicamento.descripcion }}</td>
+                        <td>{{ medicamento.precio }} bs</td>
+                        <td>{{ medicamento.fecha_vencimiento }}</td>
+                        <td>{{ medicamento.stock }}</td>
+                        <td>{{ medicamento.laboratorio_id }}</td>
+                        <td>
+                            <a class="btn btn-info" href="{% url 'UpdateMedicamentos' medicamento.id %}" role="button">Editar</a>
+                            <a class="btn btn-danger" href="{% url 'DeleteMedicamentos' medicamento.id %}" role="button">Desactivar</a>
                         </td>
                     </tr>
                     {% endfor %}
-
                 </tbody>
             </table>
-
         </div>
         <div class="card-footer text-muted">
-            <Footer>
-                <a name="" id="" class="btn btn-success" href="{% url 'CreateMedicamentos' %}" role="button">Agregar nuevo medicamento</a>
-            </Footer>
+            <footer>
+                <a class="btn btn-success" href="{% url 'CreateMedicamentos' %}" role="button">Agregar Nuevo Medicamento</a>
+            </footer>
+        </div>
+    </div>
+
+    <br><br>
+
+    <!-- Tabla de Medicamentos Inactivos -->
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">Medicamentos Inactivos</h4>
+            <p class="card-text">Lista de medicamentos inactivos</p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Precio</th>
+                        <th>Fecha de Vencimiento</th>
+                        <th>Stock</th>
+                        <th>Laboratorio</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medicamento in medicamentos_inactivos %}
+                    <tr>
+                        <td>{{ medicamento.id }}</td>
+                        <td>{{ medicamento.nombre }}</td>
+                        <td>{{ medicamento.descripcion }}</td>
+                        <td>{{ medicamento.precio }} bs</td>
+                        <td>{{ medicamento.fecha_vencimiento }}</td>
+                        <td>{{ medicamento.stock }}</td>
+                        <td>{{ medicamento.laboratorio_id }}</td>
+                        <td>
+                            <a class="btn btn-success" href="{% url 'ActivateMedicamentos' medicamento.id %}" role="button">Activar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
