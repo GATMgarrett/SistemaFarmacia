@@ -1,27 +1,17 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
-
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
-
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
 <div>
-
     <br>
-    
     <div class="card">
         <div class="card-header">
             Registrar nuevo medicamento
         </div>
         <div class="card-body">
             <h4 class="card-title">Datos del medicamento</h4>
-            <p class="card-text">Creo que esto es un texto secundarios</p>
-
+            <p class="card-text">Por favor ingrese los datos del medicamento a registrar.</p>
             {% include "inventarioCRUD/form_medicamento.html" %}
-
         </div>
     </div>
-
 </div>
 {% endblock %}

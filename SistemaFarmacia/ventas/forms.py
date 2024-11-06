@@ -34,7 +34,7 @@ class UsuarioForm(forms.ModelForm):
 class LaboratorioForm(forms.ModelForm):
     class Meta:
         model = Laboratorios
-        fields = '__all__'
+        fields = ['nombre_laboratorio', 'telefono_lab', 'direccion', 'abreviatura_lab', 'nit_lab']  # excluye 'activo'
 
 class ProveedorForm(forms.ModelForm):
     class Meta:
@@ -44,7 +44,21 @@ class ProveedorForm(forms.ModelForm):
 class MedicamentoForm(forms.ModelForm):
     class Meta:
         model = Medicamentos
-        fields = '__all__'
+        fields = ['nombre', 'descripcion', 'precio', 'fecha_vencimiento', 'stock', 'laboratorio']
+        
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control'}),
+            'precio': forms.NumberInput(attrs={'class': 'form-control'}),
+            'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'stock': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+    laboratorio = forms.ModelChoiceField(
+        queryset=Laboratorios.objects.filter(activo=True),
+        empty_label="Seleccione un laboratorio",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
         
 # Aqui vamos a crear las clases de los fomrularios de los modelos de ventas y detalle de ventas
 from django import forms

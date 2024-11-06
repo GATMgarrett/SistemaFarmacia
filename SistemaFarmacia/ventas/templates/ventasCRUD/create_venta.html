@@ -1,27 +1,77 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
-
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
 
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
-<div>
+<div class="container">
+    <h2>Registrar Nueva Venta</h2>
 
-    <br>
-    
-    <div class="card">
+    <!-- Lista de medicamentos disponibles -->
+    <div class="card mb-4">
         <div class="card-header">
-            Registrar nueva venta
+            Medicamentos Disponibles
         </div>
         <div class="card-body">
-            <h4 class="card-title">Datos de la venta</h4>
-            <p class="card-text"></p>
-
-            {% include "ventasCRUD/form_venta.html" %}
-
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medicamento in medicamentos %}
+                    <tr>
+                        <td>{{ medicamento.nombre }}</td>
+                        <td>{{ medicamento.precio }} bs</td>
+                        <td>{{ medicamento.stock }}</td>
+                        <td>
+                            <form method="POST" action="{% url 'add_to_cart' medicamento.id %}">
+                                {% csrf_token %}
+                                <input type="number" name="cantidad" min="1" max="{{ medicamento.stock }}" placeholder="Cantidad">
+                                <button type="submit" class="btn btn-primary">Agregar al Carrito</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
+    <!-- Carrito de compra actual -->
+    <div class="card mb-4">
+        <div class="card-header">
+            Productos en el Carrito
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Cantidad</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in productos_carrito %}
+                    <tr>
+                        <td>{{ item.medicamento.nombre }}</td>
+                        <td>{{ item.cantidad }}</td>
+                        <td>{{ item.subtotal }} bs</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <h5>Total: {{ total_carrito }} bs</h5>
+        </div>
+        <div class="card-footer">
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">Realizar Venta</button>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

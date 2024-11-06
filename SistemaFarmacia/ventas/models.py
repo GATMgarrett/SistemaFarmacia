@@ -7,7 +7,10 @@ class Laboratorios(models.Model):
     direccion = models.CharField(max_length=255, null=True, blank=True)
     abreviatura_lab = models.CharField(max_length=10, null=True, blank=True)
     nit_lab = models.IntegerField()
-    activo = models.BooleanField(default=True)  # Nuevo campo para la eliminación lógica
+    activo = models.BooleanField(default=True)  # Campo para la eliminación lógica
+
+    def __str__(self):
+        return self.nombre_laboratorio  # Muestra el nombre del laboratorio en el select
 
 class Medicamentos(models.Model):
     nombre = models.CharField(max_length=100)

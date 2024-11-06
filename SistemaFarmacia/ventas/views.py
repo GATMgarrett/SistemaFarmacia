@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
@@ -6,9 +7,13 @@ from django.contrib import messages
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from datetime import date
+from django.views.decorators.http import require_POST
 
 
-from .models import Laboratorios, Proveedores, Medicamentos
+from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta
 from .forms import UsuarioForm, LaboratorioForm, ProveedorForm, MedicamentoForm, VentaForm, DetalleVentaForm
 
 # Vamos a llamar a Usuario y producto
@@ -41,10 +46,12 @@ def laboratorios_view(request):
     })
 # Vista para la creación de laboratorios
 def create_laboratorio_view(request):
-    formulario = LaboratorioForm(request.POST or None, request.FILES or None)
+    formulario = LaboratorioForm(request.POST or None)
     if formulario.is_valid():
-        formulario.save()
-        return redirect('Laboratorios')
+        laboratorio = formulario.save(commit=False)  # Guarda el formulario sin guardar en la base de datos aún
+        laboratorio.activo = True  # Establece activo como True por defecto
+        laboratorio.save()  # Ahora guarda en la base de datos
+        return redirect('ListaLaboratorios')  # Cambia esta URL según tu configuración
     return render(request, 'laboratoriosCRUD/create_laboratorio.html', {'formulario': formulario})
 # Vista para la edición de laboratorios
 def update_laboratorio_view(request, id):
@@ -229,26 +236,66 @@ def login_view(request):
     
 ###/////////////////////////////////////////////////////////////////////////Esto va a ser para las vistas de ventas y detalle ventas
 
-def registrar_venta(request):
-    if request.method == 'POST':
-        venta_form = VentaForm(request.POST)
-        detalle_venta_formset = DetalleVentaForm(request.POST)
+def create_venta_view(request):
+    # Obtener todos los medicamentos disponibles (activos)
+    medicamentos = Medicamentos.objects.filter(activo=True)
 
-        if venta_form.is_valid() and detalle_venta_formset.is_valid():
-            venta = venta_form.save()
-            detalles = detalle_venta_formset.save(commit=False)
-            for detalle in detalles:
-                detalle.venta = venta
-                detalle.save()
-                # Actualiza el stock del medicamento
-                medicamento = detalle.medicamento
-                medicamento.stock -= detalle.cantidad
-                medicamento.save()
-            return redirect('alguna_url_después_de_registro')
-    else:
-        venta_form = VentaForm()
-        detalle_venta_formset = DetalleVentaForm()
+    # Obtener el carrito actual de la sesión
+    carrito = request.session.get('carrito', [])
+    productos_carrito = []
+    total_carrito = 0
+
+    for item in carrito:
+        medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
+        cantidad = item['cantidad']
+        subtotal = medicamento.precio * cantidad
+        productos_carrito.append({
+            'medicamento': medicamento,
+            'cantidad': cantidad,
+            'subtotal': subtotal
+        })
+        total_carrito += subtotal
+
+    # Si se ha enviado el formulario para confirmar la venta
+    if request.method == 'POST':
+        venta = Ventas.objects.create(
+            usuario=request.user,
+            fecha_venta=date.today(),
+            precio_total=total_carrito
+        )
+
+        # Guardar cada detalle del carrito en `DetalleVenta`
+        for item in carrito:
+            medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
+            DetalleVenta.objects.create(
+                venta=venta,
+                medicamento=medicamento,
+                precio=medicamento.precio,
+                cantidad=item['cantidad']
+            )
+
+        # Limpiar el carrito después de realizar la venta
+        request.session['carrito'] = []
+        return redirect('Ventas')
+
     return render(request, 'ventasCRUD/create_venta.html', {
-        'venta_form': venta_form,
-        'detalle_venta_formset': detalle_venta_formset
+        'medicamentos': medicamentos,
+        'productos_carrito': productos_carrito,
+        'total_carrito': total_carrito
     })
+
+@require_POST
+def add_to_cart(request, medicamento_id):
+    cantidad = int(request.POST.get('cantidad', 1))
+    carrito = request.session.get('carrito', [])
+    
+    # Agregar el medicamento al carrito o actualizar la cantidad
+    for item in carrito:
+        if item['medicamento_id'] == medicamento_id:
+            item['cantidad'] += cantidad
+            break
+    else:
+        carrito.append({'medicamento_id': medicamento_id, 'cantidad': cantidad})
+    
+    request.session['carrito'] = carrito
+    return redirect('CreateVenta')

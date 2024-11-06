@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     #'clientes', aqui puede ir lo de login
     'ventas',
     'crispy_forms',
+    'widget_tweaks',
 ]
 
 MIDDLEWARE = [

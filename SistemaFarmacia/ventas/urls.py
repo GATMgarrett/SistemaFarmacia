@@ -9,7 +9,9 @@ urlpatterns = [
     
     # urls para la creacion o registracion de  ventas y otros etc etc
     path('', views.ventas_view, name='Ventas'),
-    path('ventas/create/', views.registrar_venta, name='CreateVenta'),
+    path('venta/create/', views.create_venta_view, name='CreateVenta'),
+
+    path('venta/add_to_cart/<int:medicamento_id>/', views.add_to_cart, name='add_to_cart'),
 
     # urls for the
     path('compras/', views.compras_view, name='Compras'),
