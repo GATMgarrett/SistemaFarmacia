@@ -54,8 +54,9 @@ class Ventas(models.Model):
     activo = models.BooleanField(default=True)  # Nuevo campo para la eliminación lógica
 
 class DetalleVenta(models.Model):
-    venta = models.ForeignKey(Ventas, on_delete=models.CASCADE)
+    venta = models.ForeignKey(Ventas, on_delete=models.CASCADE, related_name="detalles")  # Agrega related_name
     medicamento = models.ForeignKey(Medicamentos, on_delete=models.CASCADE)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     cantidad = models.IntegerField()
-    activo = models.BooleanField(default=True)  # Nuevo campo para la eliminación lógica
+    activo = models.BooleanField(default=True)
+

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Detalles de la Venta {{ venta.id }}</h2>
+<p>Usuario: {{ venta.usuario.username }}</p>
+<p>Fecha: {{ venta.fecha_venta }}</p> <!-- Campo fecha_venta -->
+<p>Total: {{ venta.precio_total }} bs</p> <!-- Campo precio_total -->
+
+<h3>Productos en esta venta:</h3>
+<ul>
+    {% for detalle in venta.detalles.all %}  <!-- Usa el related_name "detalles" -->
+        <li>{{ detalle.medicamento.nombre }} - Cantidad: {{ detalle.cantidad }} - Precio: {{ detalle.precio }} bs</li>
+    {% endfor %}
+</ul>
+
+<a href="{% url 'Ventas' %}" class="btn btn-primary">Volver a listado de ventas</a>
+{% endblock %}

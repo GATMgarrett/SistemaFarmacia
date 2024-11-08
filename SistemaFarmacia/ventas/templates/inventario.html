@@ -33,7 +33,7 @@
                         <td>{{ medicamento.precio }} bs</td>
                         <td>{{ medicamento.fecha_vencimiento }}</td>
                         <td>{{ medicamento.stock }}</td>
-                        <td>{{ medicamento.laboratorio_id }}</td>
+                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td> <!-- Aquí cambia a nombre del laboratorio -->
                         <td>
                             <a class="btn btn-info" href="{% url 'UpdateMedicamentos' medicamento.id %}" role="button">Editar</a>
                             <a class="btn btn-danger" href="{% url 'DeleteMedicamentos' medicamento.id %}" role="button">Desactivar</a>
@@ -80,7 +80,7 @@
                         <td>{{ medicamento.precio }} bs</td>
                         <td>{{ medicamento.fecha_vencimiento }}</td>
                         <td>{{ medicamento.stock }}</td>
-                        <td>{{ medicamento.laboratorio_id }}</td>
+                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td> <!-- Aquí cambia a nombre del laboratorio -->
                         <td>
                             <a class="btn btn-success" href="{% url 'ActivateMedicamentos' medicamento.id %}" role="button">Activar</a>
                         </td>

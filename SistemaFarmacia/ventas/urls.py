@@ -9,9 +9,10 @@ urlpatterns = [
     
     # urls para la creacion o registracion de  ventas y otros etc etc
     path('', views.ventas_view, name='Ventas'),
+    path('venta/detalle/<int:id>/', views.detalle_venta, name='detalle_venta'),  # Nueva URL para el detalle de la venta
     path('venta/create/', views.create_venta_view, name='CreateVenta'),
-
     path('venta/add_to_cart/<int:medicamento_id>/', views.add_to_cart, name='add_to_cart'),
+    path('remove_from_cart/<int:medicamento_id>/', views.remove_from_cart, name='remove_from_cart'),
 
     # urls for the
     path('compras/', views.compras_view, name='Compras'),

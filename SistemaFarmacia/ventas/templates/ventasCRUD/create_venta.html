@@ -29,9 +29,9 @@
                         <td>
                             <form method="POST" action="{% url 'add_to_cart' medicamento.id %}">
                                 {% csrf_token %}
-                                <input type="number" name="cantidad" min="1" max="{{ medicamento.stock }}" placeholder="Cantidad">
+                                <input type="number" name="cantidad" min="1" max="{{ medicamento.stock }}" placeholder="Cantidad" required>
                                 <button type="submit" class="btn btn-primary">Agregar al Carrito</button>
-                            </form>
+                            </form>                            
                         </td>
                     </tr>
                     {% endfor %}
@@ -52,6 +52,7 @@
                         <th>Medicamento</th>
                         <th>Cantidad</th>
                         <th>Subtotal</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -60,6 +61,14 @@
                         <td>{{ item.medicamento.nombre }}</td>
                         <td>{{ item.cantidad }}</td>
                         <td>{{ item.subtotal }} bs</td>
+                        <td>
+                            <!-- Botón para quitar del carrito -->
+                            <form method="POST" action="{% url 'remove_from_cart' item.medicamento.id %}">
+                                {% csrf_token %}
+                                
+                                <button type="submit" class="btn btn-danger">Quitar</button>
+                            </form>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

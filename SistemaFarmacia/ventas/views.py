@@ -11,6 +11,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from datetime import date
 from django.views.decorators.http import require_POST
+from django.db import transaction
+
 
 
 from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta
@@ -236,6 +238,8 @@ def login_view(request):
     
 ###/////////////////////////////////////////////////////////////////////////Esto va a ser para las vistas de ventas y detalle ventas
 
+@login_required
+@transaction.atomic
 def create_venta_view(request):
     # Obtener todos los medicamentos disponibles (activos)
     medicamentos = Medicamentos.objects.filter(activo=True)
@@ -258,24 +262,39 @@ def create_venta_view(request):
 
     # Si se ha enviado el formulario para confirmar la venta
     if request.method == 'POST':
+        # Crear la venta principal
         venta = Ventas.objects.create(
             usuario=request.user,
             fecha_venta=date.today(),
             precio_total=total_carrito
         )
 
-        # Guardar cada detalle del carrito en `DetalleVenta`
+        # Guardar cada detalle del carrito en `DetalleVenta` y actualizar el stock
         for item in carrito:
             medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
-            DetalleVenta.objects.create(
-                venta=venta,
-                medicamento=medicamento,
-                precio=medicamento.precio,
-                cantidad=item['cantidad']
-            )
+            cantidad = item['cantidad']
+
+            # Verificar si hay suficiente stock
+            if medicamento.stock >= cantidad:
+                # Crear el detalle de la venta
+                DetalleVenta.objects.create(
+                    venta=venta,
+                    medicamento=medicamento,
+                    precio=medicamento.precio,
+                    cantidad=cantidad
+                )
+                # Reducir el stock del medicamento
+                medicamento.stock -= cantidad
+                medicamento.save()
+            else:
+                # En caso de stock insuficiente, cancelar la venta y lanzar un error
+                messages.error(request, f"No hay suficiente stock para {medicamento.nombre}.")
+                transaction.set_rollback(True)
+                return redirect('CreateVenta')
 
         # Limpiar el carrito después de realizar la venta
         request.session['carrito'] = []
+        messages.success(request, "La venta se ha registrado exitosamente.")
         return redirect('Ventas')
 
     return render(request, 'ventasCRUD/create_venta.html', {
@@ -286,16 +305,63 @@ def create_venta_view(request):
 
 @require_POST
 def add_to_cart(request, medicamento_id):
-    cantidad = int(request.POST.get('cantidad', 1))
+    # Obtener el carrito de la sesión o inicializarlo como una lista vacía
     carrito = request.session.get('carrito', [])
-    
-    # Agregar el medicamento al carrito o actualizar la cantidad
+
+    # Obtener el valor de cantidad desde el formulario
+    cantidad_str = request.POST.get('cantidad', '').strip()
+
+    # Validar si el campo de cantidad está vacío
+    if not cantidad_str:
+        messages.error(request, "El campo de cantidad está vacío. Por favor, ingrese una cantidad.")
+        return redirect('CreateVenta')
+
+    try:
+        # Convertir cantidad a entero
+        cantidad = int(cantidad_str)
+        if cantidad < 1:
+            raise ValueError("La cantidad debe ser al menos 1.")
+    except ValueError:
+        messages.error(request, "Por favor, ingrese una cantidad válida.")
+        return redirect('CreateVenta')
+
+    # Verificar si el medicamento ya está en el carrito
     for item in carrito:
         if item['medicamento_id'] == medicamento_id:
+            # Si ya está, aumentar la cantidad con el valor especificado
             item['cantidad'] += cantidad
             break
     else:
+        # Si no está en el carrito, agregarlo como un nuevo producto
         carrito.append({'medicamento_id': medicamento_id, 'cantidad': cantidad})
-    
+
+    # Guardar el carrito actualizado en la sesión
     request.session['carrito'] = carrito
+    request.session.modified = True  # Fuerza la actualización de la sesión
+
+    # Redirecciona con un mensaje de éxito
+    messages.success(request, "Producto agregado al carrito.")
     return redirect('CreateVenta')
+
+def remove_from_cart(request, medicamento_id):
+    # Obtén el carrito de la sesión
+    carrito = request.session.get('carrito', [])
+    print("Carrito antes de eliminar:", carrito)  # Depuración
+
+    # Filtra el carrito para eliminar el medicamento
+    carrito = [item for item in carrito if item['medicamento_id'] != medicamento_id]
+    
+    # Actualiza el carrito en la sesión
+    request.session['carrito'] = carrito
+    request.session.modified = True
+
+    print("Carrito después de eliminar:", request.session.get('carrito', {}))  # Depuración
+    messages.success(request, "Producto eliminado del carrito.")
+    return redirect('CreateVenta')
+
+def ventas_view(request):
+    ventas = Ventas.objects.all()  # Obtiene todas las ventas
+    return render(request, 'ventas.html', {'ventas': ventas})
+def detalle_venta(request, id):
+    venta = get_object_or_404(Ventas, id=id)  # Obtén la venta o muestra un error 404 si no existe
+    return render(request, 'detalle_venta.html', {'venta': venta})
