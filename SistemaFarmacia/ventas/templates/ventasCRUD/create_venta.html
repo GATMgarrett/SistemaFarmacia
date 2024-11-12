@@ -5,6 +5,24 @@
 <div class="container">
     <h2>Registrar Nueva Venta</h2>
 
+    <!-- Mostrar mensajes de error o éxito -->
+    {% if messages %}
+    <div class="alert alert-dismissible fade show" role="alert">
+        {% for message in messages %}
+            <div class="alert {{ message.tags|default:"info" }}">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Si el carrito está vacío, mostrar un mensaje de advertencia -->
+    {% if not productos_carrito %}
+    <div class="alert alert-warning" role="alert">
+        Tu carrito está vacío. Agrega productos para realizar una venta.
+    </div>
+    {% endif %}
+
     <!-- Lista de medicamentos disponibles -->
     <div class="card mb-4">
         <div class="card-header">
@@ -29,9 +47,10 @@
                         <td>
                             <form method="POST" action="{% url 'add_to_cart' medicamento.id %}">
                                 {% csrf_token %}
-                                <input type="number" name="cantidad" min="1" max="{{ medicamento.stock }}" placeholder="Cantidad" required>
-                                <button type="submit" class="btn btn-primary">Agregar al Carrito</button>
-                            </form>                            
+                                <input type="hidden" name="medicamento_id" value="{{ medicamento.id }}">
+                                <input type="number" name="cantidad" min="1" value="1">
+                                <button type="submit" class="btn btn-primary">Agregar al carrito</button>
+                            </form>             
                         </td>
                     </tr>
                     {% endfor %}
@@ -65,7 +84,6 @@
                             <!-- Botón para quitar del carrito -->
                             <form method="POST" action="{% url 'remove_from_cart' item.medicamento.id %}">
                                 {% csrf_token %}
-                                
                                 <button type="submit" class="btn btn-danger">Quitar</button>
                             </form>
                         </td>
@@ -75,10 +93,11 @@
             </table>
             <h5>Total: {{ total_carrito }} bs</h5>
         </div>
+        <!-- Botón de confirmación de venta -->
         <div class="card-footer">
             <form method="POST">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success">Realizar Venta</button>
+                <button type="submit" class="btn btn-success" {% if not productos_carrito %}disabled{% endif %}>Realizar Venta</button>
             </form>
         </div>
     </div>

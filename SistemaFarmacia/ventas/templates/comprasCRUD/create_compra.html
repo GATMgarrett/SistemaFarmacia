@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <h2>Registrar Nueva Compra</h2>
+
+    <!-- Selección de proveedor -->
+    <form method="POST" action="{% url 'create_compra' %}">
+        {% csrf_token %}
+        <label for="proveedor">Proveedor:</label>
+        <select name="proveedor" id="proveedor" class="form-control mb-3" required>
+            {% for proveedor in proveedores %}
+            <option value="{{ proveedor.id }}">{{ proveedor.nombre }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Lista de medicamentos disponibles -->
+        <div class="card mb-4">
+            <div class="card-header">
+                Medicamentos Disponibles
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Precio</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicamento in medicamentos %}
+                        <tr>
+                            <td>{{ medicamento.nombre }}</td>
+                            <td>{{ medicamento.precio }} bs</td>
+                            <td>
+                                <!-- Formulario para agregar al carrito -->
+                                <form method="POST" action="{% url 'add_to_purchase_cart' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="medicamento_id" value="{{ medicamento.id }}">
+                                    <input type="number" name="cantidad" min="1" placeholder="Cantidad" required>
+                                    <button type="submit" class="btn btn-primary">Agregar al Carrito</button>
+                                </form>                            
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+
+    <!-- Carrito de compra actual -->
+    <div class="card mb-4">
+        <div class="card-header">
+            Productos en el Carrito de Compras
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Cantidad</th>
+                        <th>Subtotal</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in productos_compra_carrito %}
+                    <tr>
+                        <td>{{ item.medicamento.nombre }}</td>
+                        <td>{{ item.cantidad }}</td>
+                        <td>{{ item.subtotal }} bs</td>
+                        <td>
+                            <!-- Formulario para quitar del carrito -->
+                            <form method="POST" action="{% url 'remove_from_purchase_cart' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="medicamento_id" value="{{ item.medicamento.id }}">
+                                <button type="submit" class="btn btn-danger">Quitar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <h5>Total: {{ total_compra }} bs</h5>
+        </div>
+        <div class="card-footer">
+            <!-- Botón para confirmar compra -->
+            <form method="POST" action="{% url 'create_compra' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">Confirmar Compra</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

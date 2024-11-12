@@ -248,8 +248,17 @@ def create_venta_view(request):
     carrito = request.session.get('carrito', [])
     productos_carrito = []
     total_carrito = 0
-
+    """
+    # Mostrar advertencia si el carrito está vacío (sin redirección)
+    if not carrito:
+        messages.warning(request, "Tu carrito está vacío. Agrega productos para realizar una venta.")
+    """
+    # Continuar con la lógica de procesamiento del carrito si no está vacío
     for item in carrito:
+        if 'medicamento_id' not in item:
+            print(f"Error: El item no contiene 'medicamento_id': {item}")
+            continue  # Saltar este item si no tiene la clave 'medicamento_id'
+        
         medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
         cantidad = item['cantidad']
         subtotal = medicamento.precio * cantidad
@@ -261,7 +270,7 @@ def create_venta_view(request):
         total_carrito += subtotal
 
     # Si se ha enviado el formulario para confirmar la venta
-    if request.method == 'POST':
+    if request.method == 'POST' and carrito:
         # Crear la venta principal
         venta = Ventas.objects.create(
             usuario=request.user,
@@ -271,6 +280,10 @@ def create_venta_view(request):
 
         # Guardar cada detalle del carrito en `DetalleVenta` y actualizar el stock
         for item in carrito:
+            if 'medicamento_id' not in item:
+                print(f"Error: El item no contiene 'medicamento_id' al procesar la venta: {item}")
+                continue
+            
             medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
             cantidad = item['cantidad']
 
@@ -325,11 +338,24 @@ def add_to_cart(request, medicamento_id):
         messages.error(request, "Por favor, ingrese una cantidad válida.")
         return redirect('CreateVenta')
 
+    # Verificar el stock disponible
+    medicamento = get_object_or_404(Medicamentos, id=medicamento_id)
+    if cantidad > medicamento.stock:
+        # Si la cantidad es mayor que el stock, mostrar el mensaje de error y redirigir
+        messages.error(request, f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {medicamento.stock}")
+        error_message = f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {medicamento.stock}"
+        return redirect('CreateVenta')
+
     # Verificar si el medicamento ya está en el carrito
     for item in carrito:
-        if item['medicamento_id'] == medicamento_id:
-            # Si ya está, aumentar la cantidad con el valor especificado
-            item['cantidad'] += cantidad
+        if item.get('medicamento_id') == medicamento_id:
+            # Si ya está en el carrito, verificar que la suma de cantidades no exceda el stock
+            nueva_cantidad = item['cantidad'] + cantidad
+            if nueva_cantidad > medicamento.stock:
+                # Si la cantidad total excede el stock, no agregar y redirigir
+                messages.error(request, f"No puedes agregar más de {medicamento.stock} unidades de {medicamento.nombre}.")
+                return redirect('CreateVenta')
+            item['cantidad'] = nueva_cantidad  # Actualiza la cantidad si no excede el stock
             break
     else:
         # Si no está en el carrito, agregarlo como un nuevo producto
@@ -339,8 +365,8 @@ def add_to_cart(request, medicamento_id):
     request.session['carrito'] = carrito
     request.session.modified = True  # Fuerza la actualización de la sesión
 
-    # Redirecciona con un mensaje de éxito
-    messages.success(request, "Producto agregado al carrito.")
+    # Redirige con un mensaje de éxito (opcional)
+    #messages.success(request, "Producto agregado al carrito.")
     return redirect('CreateVenta')
 
 def remove_from_cart(request, medicamento_id):
@@ -348,16 +374,17 @@ def remove_from_cart(request, medicamento_id):
     carrito = request.session.get('carrito', [])
     print("Carrito antes de eliminar:", carrito)  # Depuración
 
-    # Filtra el carrito para eliminar el medicamento
-    carrito = [item for item in carrito if item['medicamento_id'] != medicamento_id]
+    # Filtra el carrito para eliminar el medicamento de manera segura
+    carrito = [item for item in carrito if item.get('medicamento_id') != medicamento_id]
     
     # Actualiza el carrito en la sesión
     request.session['carrito'] = carrito
     request.session.modified = True
 
     print("Carrito después de eliminar:", request.session.get('carrito', {}))  # Depuración
-    messages.success(request, "Producto eliminado del carrito.")
+    #messages.success(request, "Producto eliminado del carrito.")
     return redirect('CreateVenta')
+
 
 def ventas_view(request):
     ventas = Ventas.objects.all()  # Obtiene todas las ventas
