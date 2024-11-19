@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Detalles de la Compra: #{{ compra.id }}</h2>
+    <p><strong>Proveedor:</strong> {{ compra.proveedor.nombre_empresa }}</p>
+    <p><strong>Fecha:</strong> {{ compra.fecha_compra }}</p>
+    <p><strong>Total:</strong> {{ compra.precio_total|floatformat:2 }}</p>
+
+    <h3>Medicamentos</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Medicamento</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detalle in detalles %}
+            <tr>
+                <td>{{ detalle.medicamento.nombre }}</td>
+                <td>{{ detalle.cantidad }}</td>
+                <td>{{ detalle.precio|floatformat:2 }}</td>
+                <td>{{ detalle.cantidad|floatformat:2|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center">No hay detalles para esta compra.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{% url 'Compras' %}" class="btn btn-secondary">Volver</a>
+</div>
+{% endblock %}

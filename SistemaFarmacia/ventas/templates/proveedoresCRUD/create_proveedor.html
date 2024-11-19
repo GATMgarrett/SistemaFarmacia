@@ -1,10 +1,7 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
 
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
 
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
 <div>
 
@@ -16,8 +13,9 @@
         </div>
         <div class="card-body">
             <h4 class="card-title">Datos del proveedor</h4>
-            <p class="card-text">Creo que esto es un texto secundarios</p>
+            <p class="card-text">Por favor ingrese los datos del proveedor.</p>
 
+            <!-- Incluimos el formulario de proveedores -->
             {% include "proveedoresCRUD/form_proveedor.html" %}
 
         </div>

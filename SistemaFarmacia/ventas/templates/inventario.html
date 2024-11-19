@@ -1,6 +1,4 @@
 {% extends "base.html" %}
-{% load static %}
-
 {% block content %}
 <div>
     <br>
@@ -8,19 +6,39 @@
     <!-- Tabla de Medicamentos Activos -->
     <div class="card">
         <div class="card-body">
-            <h4 class="card-title">Panel de Medicamentos Activos</h4>
+            <h4 class="card-title">Panel de Medicamentos</h4>
             <p class="card-text">Listado de medicamentos registrados</p>
 
+            <!-- Botón para agregar nuevo medicamento -->
+            <div class="mb-3">
+                <a class="btn btn-success" href="{% url 'CreateMedicamentos' %}" role="button">
+                    <i class="fas fa-plus-circle"></i> Agregar Nuevo Medicamento
+                </a>
+            </div>
+
+            <!-- Selección de número de medicamentos por página -->
+            <form method="get" class="mb-3">
+                <label for="num_medicamentos">Ver </label>
+                <select name="num_medicamentos" id="num_medicamentos" onchange="this.form.submit()">
+                    <option value="3" {% if num_medicamentos == 3 %}selected{% endif %}>3</option>
+                    <option value="5" {% if num_medicamentos == 5 %}selected{% endif %}>5</option>
+                    <option value="10" {% if num_medicamentos == 10 %}selected{% endif %}>10</option>
+                </select>
+                <label for="num_medicamentos"> medicamentos por página.</label>
+                <input type="hidden" name="page_activos" value="{{ medicamentos_activos.number }}">
+            </form>
+
+            <!-- Tabla -->
             <table class="table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Nombre</th>
                         <th>Descripción</th>
-                        <th>Precio</th>
-                        <th>Fecha de Vencimiento</th>
                         <th>Stock</th>
                         <th>Laboratorio</th>
+                        <th>Categoria</th>
+                        <th>Tipo</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -30,23 +48,38 @@
                         <td>{{ medicamento.id }}</td>
                         <td>{{ medicamento.nombre }}</td>
                         <td>{{ medicamento.descripcion }}</td>
-                        <td>{{ medicamento.precio }} bs</td>
-                        <td>{{ medicamento.fecha_vencimiento }}</td>
                         <td>{{ medicamento.stock }}</td>
-                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td> <!-- Aquí cambia a nombre del laboratorio -->
+                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
+                        <td>{{ medicamento.categoria.nombre_categoria|default:"No asignada" }}</td>
+                        <td>{{ medicamento.tipo.nombre_tipo|default:"No asignado" }}</td>
                         <td>
-                            <a class="btn btn-info" href="{% url 'UpdateMedicamentos' medicamento.id %}" role="button">Editar</a>
-                            <a class="btn btn-danger" href="{% url 'DeleteMedicamentos' medicamento.id %}" role="button">Desactivar</a>
+                            <a class="btn btn-info" href="{% url 'UpdateMedicamentos' medicamento.id %}" role="button">
+                                <i class="fas fa-edit"></i> 
+                            </a>
+                            <a class="btn btn-danger" href="{% url 'DeleteMedicamentos' medicamento.id %}" role="button">
+                                <i class="fas fa-trash-alt"></i> 
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-        <div class="card-footer text-muted">
-            <footer>
-                <a class="btn btn-success" href="{% url 'CreateMedicamentos' %}" role="button">Agregar Nuevo Medicamento</a>
-            </footer>
+
+            <!-- Paginación -->
+            <div class="d-flex justify-content-between">
+                <div>
+                    {% if medicamentos_activos.has_previous %}
+                    <a href="?page_activos=1&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Primera</a>
+                    <a href="?page_activos={{ medicamentos_activos.previous_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Anterior</a>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if medicamentos_activos.has_next %}
+                    <a href="?page_activos={{ medicamentos_activos.next_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Siguiente</a>
+                    <a href="?page_activos={{ medicamentos_activos.paginator.num_pages }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Última</a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -56,16 +89,15 @@
     <div class="card">
         <div class="card-body">
             <h4 class="card-title">Medicamentos Inactivos</h4>
-            <p class="card-text">Lista de medicamentos inactivos</p>
+            <p class="card-text">Listado de medicamentos inactivos</p>
 
+            <!-- Tabla -->
             <table class="table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Nombre</th>
                         <th>Descripción</th>
-                        <th>Precio</th>
-                        <th>Fecha de Vencimiento</th>
                         <th>Stock</th>
                         <th>Laboratorio</th>
                         <th>Acciones</th>
@@ -77,19 +109,34 @@
                         <td>{{ medicamento.id }}</td>
                         <td>{{ medicamento.nombre }}</td>
                         <td>{{ medicamento.descripcion }}</td>
-                        <td>{{ medicamento.precio }} bs</td>
-                        <td>{{ medicamento.fecha_vencimiento }}</td>
                         <td>{{ medicamento.stock }}</td>
-                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td> <!-- Aquí cambia a nombre del laboratorio -->
+                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
                         <td>
-                            <a class="btn btn-success" href="{% url 'ActivateMedicamentos' medicamento.id %}" role="button">Activar</a>
+                            <a class="btn btn-success" href="{% url 'ActivateMedicamentos' medicamento.id %}" role="button">
+                                <i class="fas fa-check-circle"></i> Activar
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+
+            <!-- Paginación -->
+            <div class="d-flex justify-content-between">
+                <div>
+                    {% if medicamentos_inactivos.has_previous %}
+                    <a href="?page_inactivos=1&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Primera</a>
+                    <a href="?page_inactivos={{ medicamentos_inactivos.previous_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Anterior</a>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if medicamentos_inactivos.has_next %}
+                    <a href="?page_inactivos={{ medicamentos_inactivos.next_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Siguiente</a>
+                    <a href="?page_inactivos={{ medicamentos_inactivos.paginator.num_pages }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Última</a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
-
 </div>
 {% endblock %}

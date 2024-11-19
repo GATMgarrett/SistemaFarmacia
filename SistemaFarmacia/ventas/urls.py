@@ -14,8 +14,12 @@ urlpatterns = [
     path('venta/add_to_cart/<int:medicamento_id>/', views.add_to_cart, name='add_to_cart'),
     path('remove_from_cart/<int:medicamento_id>/', views.remove_from_cart, name='remove_from_cart'),
 
-    # urls for the
+    # urls for the compra
     path('compras/', views.compras_view, name='Compras'),
+    path('compras/<int:compra_id>/detalle/', views.detalle_compra_view, name='detalle_compra'),
+    path('compras/create/', views.create_compra_view, name='CreateCompra'),
+    path('Compras/add_to_cart_compra/<int:medicamento_id>/', views.add_to_cart_compra, name='add_to_cart_compra'),
+    path('remove_from_cart_compra/<int:medicamento_id>/', views.remove_from_cart_compra, name='remove_from_cart_compra'),
     
     # urls for the views of the users
     path('usuario/', views.usuarios_view, name='Usuarios'),
@@ -29,6 +33,7 @@ urlpatterns = [
     path('proveedores/create', views.create_proveedor_view, name='CreateProveedores'),
     path('proveedores/update/<int:id>', views.update_proveedor_view, name='UpdateProveedores'),
     path('deleteProveedores/<int:id>', views.delete_proveedor_view, name='DeleteProveedores'),
+    path('activate/<int:id>/', views.activate_proveedor_view, name='ActivateProveedores'),
     
     # URLs for the views of (laboratorios)
     path('laboratorios/', views.laboratorios_view, name='Laboratorios'),

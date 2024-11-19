@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
-from .models import Laboratorios, Medicamentos, Roles, Proveedores, Compras, DetalleCompra, Ventas, DetalleVenta
+from .models import Laboratorios, Medicamentos, Roles, Proveedores, Compras, DetalleCompra, Ventas, DetalleVenta, Categorias, Tipos
 
 @admin.register(Laboratorios)
 class LaboratoriosAdmin(admin.ModelAdmin):
@@ -8,7 +8,7 @@ class LaboratoriosAdmin(admin.ModelAdmin):
 
 @admin.register(Medicamentos)
 class MedicamentosAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'precio', 'fecha_vencimiento', 'stock', 'laboratorio']
+    list_display = ['nombre', 'stock', 'laboratorio']  # Elimina 'precio', ya no existe en el modelo
 
 @admin.register(Roles)
 class RolesAdmin(admin.ModelAdmin):
@@ -27,7 +27,7 @@ class ProveedoresAdmin(admin.ModelAdmin):
 
 @admin.register(Compras)
 class ComprasAdmin(admin.ModelAdmin):
-    list_display = ['medicamento', 'proveedor', 'fecha_compra', 'cantidad', 'precio_total']
+    list_display = ['proveedor', 'fecha_compra', 'precio_total']
 
 @admin.register(DetalleCompra)
 class DetalleCompraAdmin(admin.ModelAdmin):
@@ -40,3 +40,11 @@ class VentasAdmin(admin.ModelAdmin):
 @admin.register(DetalleVenta)
 class DetalleVentaAdmin(admin.ModelAdmin):
     list_display = ['venta', 'medicamento', 'precio', 'cantidad']
+
+@admin.register(Categorias)
+class CategoriasAdmin(admin.ModelAdmin):
+    list_display = ['nombre_categoria', 'descripcion']
+
+@admin.register(Tipos)
+class TiposAdmin(admin.ModelAdmin):
+    list_display = ['nombre_tipo', 'descripcion']

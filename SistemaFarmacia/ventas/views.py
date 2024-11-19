@@ -1,21 +1,24 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.utils.timezone import now
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
+from django.core.paginator import Paginator
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from datetime import date
 from django.views.decorators.http import require_POST
 from django.db import transaction
+from django.db.models import Q  # Para realizar búsquedas avanzadas
 
 
-
-from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta
+from datetime import datetime
+from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra
 from .forms import UsuarioForm, LaboratorioForm, ProveedorForm, MedicamentoForm, VentaForm, DetalleVentaForm
 
 # Vamos a llamar a Usuario y producto
@@ -40,11 +43,26 @@ def compras_view(request):
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los laboratorios
 # Vista de los laboratorios
 def laboratorios_view(request):
+    # Obtener los laboratorios activos e inactivos
     laboratorios_activos = Laboratorios.objects.filter(activo=True)
     laboratorios_inactivos = Laboratorios.objects.filter(activo=False)
+
+    # Obtener el número de elementos por página desde el request (por defecto 5)
+    num_laboratorios = request.GET.get('num_laboratorios', 5)
+
+    # Crear el paginador para los laboratorios activos
+    paginator = Paginator(laboratorios_activos, num_laboratorios)
+    page = request.GET.get('page')  # Página actual
+    laboratorios_activos_page = paginator.get_page(page)
+
+    # Crear el paginador para los laboratorios inactivos
+    paginator_inactivos = Paginator(laboratorios_inactivos, num_laboratorios)
+    laboratorios_inactivos_page = paginator_inactivos.get_page(page)
+
     return render(request, 'laboratorios.html', {
-        'laboratorios_activos': laboratorios_activos,
-        'laboratorios_inactivos': laboratorios_inactivos
+        'laboratorios_activos': laboratorios_activos_page,
+        'laboratorios_inactivos': laboratorios_inactivos_page,
+        'num_laboratorios': num_laboratorios,
     })
 # Vista para la creación de laboratorios
 def create_laboratorio_view(request):
@@ -144,18 +162,35 @@ def activate_user_view(request, id):
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los proveedores
 # Vista de los proveedores
 def proveedores_view(request):
+    # Obtén los proveedores activos e inactivos
     proveedores_activos = Proveedores.objects.filter(activo=True)
     proveedores_inactivos = Proveedores.objects.filter(activo=False)
-    return render(request, 'proveedores.html', {
-        'proveedores_activos': proveedores_activos,
-        'proveedores_inactivos': proveedores_inactivos
-    })
+
+    # Determinar cuántos elementos por página
+    items_per_page = request.GET.get('items_per_page', 5)  # Por defecto, 5
+
+    # Paginación para proveedores activos
+    paginator_activos = Paginator(proveedores_activos, items_per_page)
+    page_activos = request.GET.get('page')
+    proveedores_activos_pag = paginator_activos.get_page(page_activos)
+
+    # Paginación para proveedores inactivos
+    paginator_inactivos = Paginator(proveedores_inactivos, items_per_page)
+    page_inactivos = request.GET.get('page')
+    proveedores_inactivos_pag = paginator_inactivos.get_page(page_inactivos)
+
+    context = {
+        'proveedores_activos': proveedores_activos_pag,
+        'proveedores_inactivos': proveedores_inactivos_pag,
+        'items_per_page': items_per_page  # Pasar la opción seleccionada
+    }
+    return render(request, 'proveedores.html', context)
 # Vista para la creacion de los proveedores
 def create_proveedor_view(request):
     formulario = ProveedorForm(request.POST or None, request.FILES or None)
     if formulario.is_valid():
         formulario.save()
-        return redirect('Proveedores')
+        return redirect('Proveedores')  # Redirige a la lista de proveedores
     return render(request, 'proveedoresCRUD/create_proveedor.html', {'formulario': formulario})
 # Vista para la edicion de los proveedores
 def update_proveedor_view(request, id):
@@ -171,17 +206,36 @@ def delete_proveedor_view(request, id):
     proveedor.activo = False  # Establece el proveedor como inactivo
     proveedor.save()
     return redirect('Proveedores')
+# Vista para activar los proveedores
+def activate_proveedor_view(request, id):
+    proveedor = get_object_or_404(Proveedores, id=id)
+    proveedor.activo = True
+    proveedor.save()
+    return redirect('Proveedores')  # Redirige a la página de proveedores
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los medicamentos(inventario)
 # Vista de los medicamentos
 def medicamentos_view(request):
+    # Número de medicamentos por página (por defecto 5)
+    num_medicamentos = request.GET.get('num_medicamentos', '5')  # Valor predeterminado: 5
+    num_medicamentos = int(num_medicamentos) if num_medicamentos.isdigit() else 5
+
     # Medicamentos activos
     medicamentos_activos = Medicamentos.objects.filter(activo=True)
+    paginator_activos = Paginator(medicamentos_activos, num_medicamentos)
+    page_activos = request.GET.get('page_activos', 1)
+    medicamentos_activos_page = paginator_activos.get_page(page_activos)
+
     # Medicamentos inactivos
     medicamentos_inactivos = Medicamentos.objects.filter(activo=False)
-    
+    paginator_inactivos = Paginator(medicamentos_inactivos, num_medicamentos)
+    page_inactivos = request.GET.get('page_inactivos', 1)
+    medicamentos_inactivos_page = paginator_inactivos.get_page(page_inactivos)
+
+    # Renderizar la plantilla
     return render(request, 'inventario.html', {
-        'medicamentos_activos': medicamentos_activos,
-        'medicamentos_inactivos': medicamentos_inactivos
+        'medicamentos_activos': medicamentos_activos_page,
+        'medicamentos_inactivos': medicamentos_inactivos_page,
+        'num_medicamentos': num_medicamentos,
     })
 # Vista para la creación de medicamentos
 def create_medicamento_view(request):
@@ -241,24 +295,28 @@ def login_view(request):
 @login_required
 @transaction.atomic
 def create_venta_view(request):
-    # Obtener todos los medicamentos disponibles (activos)
+    # Obtener el término de búsqueda desde el GET request
+    query = request.GET.get('q', '').strip()
+    
+    # Filtrar medicamentos activos y, si hay una búsqueda, aplicar filtro adicional
     medicamentos = Medicamentos.objects.filter(activo=True)
+    if query:
+        medicamentos = medicamentos.filter(Q(nombre__icontains=query))
+
+    # Paginación: mostrar 5 medicamentos por página
+    paginator = Paginator(medicamentos, 5)  # 5 medicamentos por página
+    page_number = request.GET.get('page')
+    medicamentos_paginados = paginator.get_page(page_number)
 
     # Obtener el carrito actual de la sesión
     carrito = request.session.get('carrito', [])
     productos_carrito = []
     total_carrito = 0
-    """
-    # Mostrar advertencia si el carrito está vacío (sin redirección)
-    if not carrito:
-        messages.warning(request, "Tu carrito está vacío. Agrega productos para realizar una venta.")
-    """
-    # Continuar con la lógica de procesamiento del carrito si no está vacío
+
+    # Procesar el carrito
     for item in carrito:
         if 'medicamento_id' not in item:
-            print(f"Error: El item no contiene 'medicamento_id': {item}")
-            continue  # Saltar este item si no tiene la clave 'medicamento_id'
-        
+            continue
         medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
         cantidad = item['cantidad']
         subtotal = medicamento.precio * cantidad
@@ -269,51 +327,65 @@ def create_venta_view(request):
         })
         total_carrito += subtotal
 
-    # Si se ha enviado el formulario para confirmar la venta
+    # Chequear si hay suficiente stock en los lotes antes de procesar la venta
+    for item in carrito:
+        medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
+        cantidad_requerida = item['cantidad']
+        lotes = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True)
+        stock_total = sum(lote.cantidad for lote in lotes)
+
+        if stock_total < cantidad_requerida:
+            messages.error(request, f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {stock_total}")
+            return redirect('CreateVenta')
+
+    # Procesar la confirmación de venta
     if request.method == 'POST' and carrito:
-        # Crear la venta principal
         venta = Ventas.objects.create(
             usuario=request.user,
             fecha_venta=date.today(),
             precio_total=total_carrito
         )
 
-        # Guardar cada detalle del carrito en `DetalleVenta` y actualizar el stock
         for item in carrito:
             if 'medicamento_id' not in item:
-                print(f"Error: El item no contiene 'medicamento_id' al procesar la venta: {item}")
                 continue
-            
             medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
             cantidad = item['cantidad']
+            lotes = LoteMedicamento.objects.filter(
+                medicamento=medicamento,
+                activo=True
+            ).order_by('fecha_compra')
 
-            # Verificar si hay suficiente stock
-            if medicamento.stock >= cantidad:
-                # Crear el detalle de la venta
-                DetalleVenta.objects.create(
-                    venta=venta,
-                    medicamento=medicamento,
-                    precio=medicamento.precio,
-                    cantidad=cantidad
-                )
-                # Reducir el stock del medicamento
-                medicamento.stock -= cantidad
-                medicamento.save()
-            else:
-                # En caso de stock insuficiente, cancelar la venta y lanzar un error
-                messages.error(request, f"No hay suficiente stock para {medicamento.nombre}.")
-                transaction.set_rollback(True)
-                return redirect('CreateVenta')
+            cantidad_requerida = cantidad
+            for lote in lotes:
+                if lote.cantidad >= cantidad_requerida:
+                    lote.cantidad -= cantidad_requerida
+                    if lote.cantidad == 0:
+                        lote.activo = False
+                    lote.save()
+                    break
+                else:
+                    cantidad_requerida -= lote.cantidad
+                    lote.cantidad = 0
+                    lote.activo = False
+                    lote.save()
 
-        # Limpiar el carrito después de realizar la venta
+            DetalleVenta.objects.create(
+                venta=venta,
+                medicamento=medicamento,
+                precio=medicamento.precio,
+                cantidad=cantidad
+            )
+
         request.session['carrito'] = []
         messages.success(request, "La venta se ha registrado exitosamente.")
         return redirect('Ventas')
 
     return render(request, 'ventasCRUD/create_venta.html', {
-        'medicamentos': medicamentos,
+        'medicamentos': medicamentos_paginados,
         'productos_carrito': productos_carrito,
-        'total_carrito': total_carrito
+        'total_carrito': total_carrito,
+        'query': query
     })
 
 @require_POST
@@ -338,24 +410,28 @@ def add_to_cart(request, medicamento_id):
         messages.error(request, "Por favor, ingrese una cantidad válida.")
         return redirect('CreateVenta')
 
-    # Verificar el stock disponible
+    # Obtener el medicamento
     medicamento = get_object_or_404(Medicamentos, id=medicamento_id)
-    if cantidad > medicamento.stock:
-        # Si la cantidad es mayor que el stock, mostrar el mensaje de error y redirigir
-        messages.error(request, f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {medicamento.stock}")
-        error_message = f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {medicamento.stock}"
+
+    # Verificar el stock disponible en todos los lotes activos
+    lotes = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True)
+    stock_total = sum(lote.cantidad for lote in lotes)
+
+    if cantidad > stock_total:
+        # Si la cantidad solicitada excede el stock total, mostrar un mensaje de error y redirigir
+        messages.error(request, f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {stock_total}")
         return redirect('CreateVenta')
 
     # Verificar si el medicamento ya está en el carrito
     for item in carrito:
         if item.get('medicamento_id') == medicamento_id:
-            # Si ya está en el carrito, verificar que la suma de cantidades no exceda el stock
+            # Si ya está en el carrito, verificar que la suma de cantidades no exceda el stock total
             nueva_cantidad = item['cantidad'] + cantidad
-            if nueva_cantidad > medicamento.stock:
-                # Si la cantidad total excede el stock, no agregar y redirigir
-                messages.error(request, f"No puedes agregar más de {medicamento.stock} unidades de {medicamento.nombre}.")
+            if nueva_cantidad > stock_total:
+                # Si la cantidad total en el carrito excede el stock disponible, no agregar y redirigir
+                messages.error(request, f"No puedes agregar más de {stock_total} unidades de {medicamento.nombre}.")
                 return redirect('CreateVenta')
-            item['cantidad'] = nueva_cantidad  # Actualiza la cantidad si no excede el stock
+            item['cantidad'] = nueva_cantidad  # Actualiza la cantidad si no excede el stock total
             break
     else:
         # Si no está en el carrito, agregarlo como un nuevo producto
@@ -366,7 +442,7 @@ def add_to_cart(request, medicamento_id):
     request.session.modified = True  # Fuerza la actualización de la sesión
 
     # Redirige con un mensaje de éxito (opcional)
-    #messages.success(request, "Producto agregado al carrito.")
+    # messages.success(request, "Producto agregado al carrito.")
     return redirect('CreateVenta')
 
 def remove_from_cart(request, medicamento_id):
@@ -387,8 +463,197 @@ def remove_from_cart(request, medicamento_id):
 
 
 def ventas_view(request):
-    ventas = Ventas.objects.all()  # Obtiene todas las ventas
-    return render(request, 'ventas.html', {'ventas': ventas})
+    query = request.GET.get('q', '')  # Capturar el término de búsqueda
+    ventas_query = Ventas.objects.all()
+
+    # Filtro de búsqueda por usuario
+    if query:
+        ventas_query = ventas_query.filter(usuario__username__icontains=query)
+
+    # Paginación
+    paginator = Paginator(ventas_query, 5)  # 5 ventas por página
+    page_number = request.GET.get('page', 1)
+    ventas = paginator.get_page(page_number)
+
+    return render(request, 'ventas.html', {
+        'ventas': ventas,
+        'query': query  # Pasar el término de búsqueda para mantenerlo en el formulario
+    })
+
 def detalle_venta(request, id):
     venta = get_object_or_404(Ventas, id=id)  # Obtén la venta o muestra un error 404 si no existe
     return render(request, 'detalle_venta.html', {'venta': venta})
+
+#//////////////////////////////////////////////////////////////////////////////Todo lo de aqui sera para la parte de las compras
+# Vista para crear una nueva compra
+@login_required
+@transaction.atomic
+def create_compra_view(request):
+    if request.method == 'POST':
+        proveedor_id = request.POST.get('proveedor')
+        carrito_compra = request.session.get('carrito_compra', [])
+
+        if not carrito_compra:
+            messages.error(request, "El carrito de compras está vacío.")
+            return redirect('CreateCompra')
+
+        total_compra = sum(item['precio_unitario'] * item['cantidad'] for item in carrito_compra)
+
+        compra = Compras.objects.create(
+            proveedor_id=proveedor_id,
+            fecha_compra=now(),
+            precio_total=total_compra
+        )
+
+        for item in carrito_compra:
+            medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
+            cantidad = item['cantidad']
+            precio_compra = item['precio_unitario']
+            precio_venta = item['precio_venta']
+            fecha_vencimiento = datetime.strptime(item['fecha_vencimiento'], '%Y-%m-%d').date()
+            fecha_produccion = datetime.strptime(item['fecha_produccion'], '%Y-%m-%d').date()
+
+            DetalleCompra.objects.create(
+                compra=compra,
+                medicamento=medicamento,
+                precio=precio_compra,
+                cantidad=cantidad
+            )
+
+            LoteMedicamento.objects.create(
+                medicamento=medicamento,
+                cantidad=cantidad,
+                precio_compra=precio_compra,
+                precio_venta=precio_venta,
+                fecha_compra=compra.fecha_compra,
+                fecha_vencimiento=fecha_vencimiento,
+                fecha_produccion=fecha_produccion,
+                activo=True
+            )
+
+            medicamento.stock += cantidad
+            medicamento.save()
+
+        request.session['carrito_compra'] = []
+        request.session.modified = True
+
+        messages.success(request, "Compra registrada exitosamente.")
+        return redirect('Compras')
+
+    # Proveedores activos
+    proveedores = Proveedores.objects.filter(activo=True)
+
+    # Manejo de búsqueda
+    query = request.GET.get('q', '')  # Obtener la consulta del usuario
+    medicamentos_query = Medicamentos.objects.filter(activo=True)
+    if query:
+        medicamentos_query = medicamentos_query.filter(Q(nombre__icontains=query))
+
+    # Manejo de paginación
+    paginator = Paginator(medicamentos_query, 5)  # Mostrar 10 medicamentos por página
+    page_number = request.GET.get('page', 1)
+    medicamentos = paginator.get_page(page_number)
+
+    # Obtener carrito de compras de la sesión
+    carrito_compra = request.session.get('carrito_compra', [])
+    for item in carrito_compra:
+        item['subtotal'] = item['precio_unitario'] * item['cantidad']
+
+    return render(request, 'comprasCRUD/create_compra.html', {
+        'proveedores': proveedores,
+        'medicamentos': medicamentos,
+        'productos_compra_carrito': carrito_compra,
+        'total_compra': sum(item['precio_unitario'] * item['cantidad'] for item in carrito_compra),
+        'query': query,  # Para mantener el término de búsqueda en el formulario
+    })
+
+@require_POST
+def add_to_cart_compra(request, medicamento_id):
+    # Obtener el carrito actual de la sesión
+    carrito_compra = request.session.get('carrito_compra', [])
+
+    # Obtener el medicamento
+    medicamento = get_object_or_404(Medicamentos, id=medicamento_id)
+    cantidad = int(request.POST.get('cantidad', 1))
+    fecha_vencimiento = request.POST.get('fecha_vencimiento')
+    fecha_produccion = request.POST.get('fecha_produccion')
+    precio_compra = float(request.POST.get('precio_compra'))
+    precio_venta = float(request.POST.get('precio_venta'))
+
+    # Validar datos
+    if cantidad <= 0 or precio_compra <= 0 or precio_venta <= 0:
+        messages.error(request, "Cantidad, precio de compra y precio de venta deben ser mayores a cero.")
+        return redirect('CreateCompra')
+
+    # Validar la fecha de vencimiento y producción
+    try:
+        fecha_vencimiento = datetime.strptime(fecha_vencimiento, '%Y-%m-%d').date()
+        fecha_produccion = datetime.strptime(fecha_produccion, '%Y-%m-%d').date()
+    except ValueError:
+        messages.error(request, "Fechas inválidas.")
+        return redirect('CreateCompra')
+
+    # Buscar si el medicamento ya está en el carrito con las mismas fechas
+    for item in carrito_compra:
+        if (
+            item['medicamento_id'] == medicamento_id and
+            item['fecha_vencimiento'] == str(fecha_vencimiento) and
+            item['fecha_produccion'] == str(fecha_produccion)
+        ):
+            item['cantidad'] += cantidad
+            break
+    else:
+        # Si no está, agregarlo como nuevo producto
+        carrito_compra.append({
+            'medicamento_id': medicamento_id,
+            'nombre': medicamento.nombre,
+            'cantidad': cantidad,
+            'precio_unitario': precio_compra,
+            'precio_venta': precio_venta,
+            'fecha_vencimiento': str(fecha_vencimiento),
+            'fecha_produccion': str(fecha_produccion),
+        })
+
+    # Guardar el carrito actualizado en la sesión
+    request.session['carrito_compra'] = carrito_compra
+    request.session.modified = True
+
+    print(f"Carrito actualizado: {request.session['carrito_compra']}")  # Depuración
+
+    messages.success(request, f"{medicamento.nombre} ha sido agregado al carrito.")
+    return redirect('CreateCompra')
+
+# Eliminar medicamento del carrito
+@require_POST
+def remove_from_cart_compra(request, medicamento_id):
+    carrito_compra = request.session.get('carrito_compra', [])
+    carrito_compra = [item for item in carrito_compra if item.get('medicamento_id') != medicamento_id]
+    request.session['carrito_compra'] = carrito_compra
+    request.session.modified = True
+    messages.success(request, "Medicamento eliminado del carrito.")
+    return redirect('CreateCompra')
+
+# Vista para mostrar las compras registradas
+def compras_view(request):
+    query = request.GET.get('q', '')  # Capturar el término de búsqueda
+    compras_query = Compras.objects.select_related('proveedor').all()
+
+    # Filtro de búsqueda por proveedor
+    if query:
+        compras_query = compras_query.filter(proveedor__nombre_empresa__icontains=query)
+
+    # Paginación
+    paginator = Paginator(compras_query, 5)  # 5 compras por página
+    page_number = request.GET.get('page', 1)
+    compras = paginator.get_page(page_number)
+
+    return render(request, 'compras.html', {
+        'compras': compras,
+        'query': query  # Pasar el término de búsqueda para mantenerlo en el formulario
+    })
+
+# Vista para mostrar el detalle de las compras
+def detalle_compra_view(request, compra_id):
+    compra = get_object_or_404(Compras, id=compra_id)
+    detalles = DetalleCompra.objects.filter(compra=compra)
+    return render(request, 'comprasCRUD/form_compra.html', {'compra': compra, 'detalles': detalles})

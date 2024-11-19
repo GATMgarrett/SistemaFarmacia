@@ -2,7 +2,8 @@ from django import forms
 from django.contrib.auth.models import User, Group
 from .models import Laboratorios, Proveedores, Medicamentos
 from django_select2.forms import Select2Widget
-    
+from .models import Ventas, DetalleVenta, Categorias, Tipos
+
     
 # Aqui vamos a crear las clases de los fomrularios de los modelos
 
@@ -39,18 +40,21 @@ class LaboratorioForm(forms.ModelForm):
 class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedores
-        fields = '__all__'
+        fields = ['nombre_empresa', 'contacto', 'correo_contacto', 'telefono_contacto', 'descripcion', 'direccion']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Establecer 'activo' por defecto como True sin que aparezca en el formulario
+        self.instance.activo = True
         
 class MedicamentoForm(forms.ModelForm):
     class Meta:
         model = Medicamentos
-        fields = ['nombre', 'descripcion', 'precio', 'fecha_vencimiento', 'stock', 'laboratorio']
+        fields = ['nombre', 'descripcion', 'stock', 'laboratorio', 'categoria', 'tipo']  # Agregamos 'categoria' y 'tipo'
         
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control'}),
-            'precio': forms.NumberInput(attrs={'class': 'form-control'}),
-            'fecha_vencimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'stock': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
@@ -59,11 +63,30 @@ class MedicamentoForm(forms.ModelForm):
         empty_label="Seleccione un laboratorio",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-        
-# Aqui vamos a crear las clases de los fomrularios de los modelos de ventas y detalle de ventas
-from django import forms
-from .models import Ventas, DetalleVenta
 
+    categoria = forms.ModelChoiceField(
+        queryset=Categorias.objects.filter(activo=True),  # Asegúrate de tener un campo 'activo' en Categorias
+        empty_label="Seleccione una categoría",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    tipo = forms.ModelChoiceField(
+        queryset=Tipos.objects.filter(activo=True),  # Asegúrate de tener un campo 'activo' en Tipos
+        empty_label="Seleccione un tipo",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+class CategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Categorias
+        fields = ['nombre_categoria', 'descripcion']
+
+class TipoForm(forms.ModelForm):
+    class Meta:
+        model = Tipos
+        fields = ['nombre_tipo', 'descripcion']
+
+# Aqui vamos a crear las clases de los fomrularios de los modelos de ventas y detalle de ventas
 class VentaForm(forms.ModelForm):
     class Meta:
         model = Ventas

@@ -28,6 +28,16 @@
     </div>
 
     <div class="form-group">
+        <label for="id_categoria">Categoría</label>
+        {{ formulario.categoria|add_class:"form-control" }}
+    </div>
+    
+    <div class="form-group">
+        <label for="id_tipo">Tipo</label>
+        {{ formulario.tipo|add_class:"form-control" }}
+    </div>    
+
+    <div class="form-group">
         <label for="id_laboratorio">Laboratorio</label>
         {{ formulario.laboratorio|add_class:"form-control" }}
     </div>

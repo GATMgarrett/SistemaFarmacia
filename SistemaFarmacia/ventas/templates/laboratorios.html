@@ -1,20 +1,28 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
 
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
-{% load static %}
-
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
 <div>
 
     <br>
 
+   
     <!-- Tabla de laboratorios activos -->
     <div class="card">
         <div class="card-body">
             <h4 class="card-title">Panel de Laboratorios Activos</h4>
             <p class="card-text">Listado de laboratorios activos</p>
+
+             <!-- Selección de número de laboratorios por página -->
+    <form method="get" class="mb-3">
+        <label for="num_laboratorios">Ver </label>
+        <select name="num_laboratorios" id="num_laboratorios" onchange="this.form.submit()">
+            <option value="3" {% if num_laboratorios == '3' %}selected{% endif %}>3</option>
+            <option value="5" {% if num_laboratorios == '5' %}selected{% endif %}>5</option>
+            <option value="10" {% if num_laboratorios == '10' %}selected{% endif %}>10</option>
+        </select>
+        <label for="num_laboratorios"> laboratorios por página.</label>
+    </form>
+
 
             <table class="table">
                 <thead>
@@ -38,19 +46,36 @@
                         <td>{{ laboratorio.abreviatura_lab }}</td>
                         <td>{{ laboratorio.nit_lab }}</td>
                         <td>
-                            <a class="btn btn-info" href="{% url 'UpdateLaboratorio' laboratorio.id %}" role="button">Editar</a>
-                            |
-                            <a class="btn btn-danger" href="{% url 'DeleteLaboratorio' laboratorio.id %}" role="button">Desactivar</a>
+                            <div class="d-flex">
+                                <a class="btn btn-info me-2" href="{% url 'UpdateLaboratorio' laboratorio.id %}" role="button">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a class="btn btn-danger" href="{% url 'DeleteLaboratorio' laboratorio.id %}" role="button">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-        <div class="card-footer text-muted">
-            <Footer>
-                <a class="btn btn-success" href="{% url 'CreateLaboratorio' %}" role="button">Agregar nuevo laboratorio</a>
-            </Footer>
+
+            <!-- Paginación -->
+            <div class="d-flex justify-content-between">
+                <div>
+                    {% if laboratorios_activos.has_previous %}
+                    <a href="?page=1&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Primera</a>
+                    <a href="?page={{ laboratorios_activos.previous_page_number }}&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Anterior</a>
+                    {% endif %}
+                </div>
+
+                <div>
+                    {% if laboratorios_activos.has_next %}
+                    <a href="?page={{ laboratorios_activos.next_page_number }}&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Siguiente</a>
+                    <a href="?page={{ laboratorios_activos.paginator.num_pages }}&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Última</a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -84,12 +109,33 @@
                         <td>{{ laboratorio.abreviatura_lab }}</td>
                         <td>{{ laboratorio.nit_lab }}</td>
                         <td>
-                            <a class="btn btn-info" href="{% url 'ActivateLaboratorio' laboratorio.id %}" role="button">Activar</a>
+                            <div class="d-flex">
+                                <a class="btn btn-info me-2" href="{% url 'ActivateLaboratorio' laboratorio.id %}" role="button">
+                                    <i class="fas fa-check-circle"></i> Activar
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+
+            <!-- Paginación para laboratorios inactivos -->
+            <div class="d-flex justify-content-between">
+                <div>
+                    {% if laboratorios_inactivos.has_previous %}
+                    <a href="?page=1&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Primera</a>
+                    <a href="?page={{ laboratorios_inactivos.previous_page_number }}&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Anterior</a>
+                    {% endif %}
+                </div>
+
+                <div>
+                    {% if laboratorios_inactivos.has_next %}
+                    <a href="?page={{ laboratorios_inactivos.next_page_number }}&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Siguiente</a>
+                    <a href="?page={{ laboratorios_inactivos.paginator.num_pages }}&num_laboratorios={{ num_laboratorios }}" class="btn btn-secondary">Última</a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
