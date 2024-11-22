@@ -49,8 +49,11 @@ urlpatterns = [
     path('inventario/delete/<int:id>/', views.delete_medicamento_view, name='DeleteMedicamentos'),  # Cambiado para reflejar la estructura
     path('inventario/activate/<int:id>/', views.activate_medicamento_view, name='ActivateMedicamentos'),  # Nueva ruta para activar medicamentos
     
-    # dashboard
-    path('Dashboard/', views.dashboard_view, name='Dashboard'),
+    # dashboard Analisis BA
+    path('Dashboard/ventas/', views.dashboard_view_ventas, name='Dashboard_ventas'),
+    path('Dashboard/Inventario/', views.dashboard_view_inventario, name='Dashboard_inventario'),
+    path('Dashboard/Proveedores/', views.dashboard_view_proveedores, name='Dashboard_proveedores'),
+    path('Dashboard/Usuarios/', views.dashboard_view_usuarios, name='Dashboard_usuarios'),
     
     # Vista para el login
     path('login/', views.login_view, name='login'),

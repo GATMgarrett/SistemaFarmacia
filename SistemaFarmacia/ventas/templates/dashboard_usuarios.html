@@ -1,0 +1,15 @@
+<!--Con esta parte de codigo vamos a llamar a base html-->
+{% extends "base.html" %}
+
+<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
+{% load static %}
+
+<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
+{% block content %}
+<div>
+    <h1>Usuarios o clientes:</h1>
+    <h2>Frecuencia de ventas por usuario.</h2>
+    <h3>Contribución de cada vendedor al ingreso total.</h3>
+
+</div>
+{% endblock %}

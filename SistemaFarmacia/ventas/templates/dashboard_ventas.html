@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Dashboard de Ventas</h1>
+    <ul class="list-group mb-4">
+        {% for mes, prediccion in predicciones.items %}
+        <li class="list-group-item">{{ mes }}: {{ prediccion.cantidad }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2 class="mb-3">analisis descriptivo</h2>
+    <img src="data:image/png;base64,{{ imagen_grafico }}" alt="Gráfico de Ventas y Predicciones" class="img-fluid">
+</div>
+{% endblock %}

@@ -121,10 +121,30 @@
                   <p>Laboratorios</p>
                 </a>
               </li>
+
+            <li class="nav-header">DASHBOARD BA</li>
             <li class="nav-item">
-              <a href="{% url 'Dashboard' %}" class="nav-link">
+              <a href="{% url 'Dashboard_ventas' %}" class="nav-link">
                 <i class="nav-icon fas fa-chart-line"></i>
-                <p>Dashboard</p>
+                <p>Análisis de ventas</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'Dashboard_inventario' %}" class="nav-link">
+                <i class="nav-icon fas fa-chart-line"></i>
+                <p>Gestión de inventario</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'Dashboard_proveedores' %}" class="nav-link">
+                <i class="nav-icon fas fa-chart-line"></i>
+                <p>Proveedores y compras</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'Dashboard_usuarios' %}" class="nav-link">
+                <i class="nav-icon fas fa-chart-line"></i>
+                <p>Usuarios </p>
               </a>
             </li>
 

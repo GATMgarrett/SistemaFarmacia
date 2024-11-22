@@ -14,14 +14,21 @@ from django.http import JsonResponse
 from datetime import date
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from django.db.models import Q  # Para realizar búsquedas avanzadas
+from django.db.models import Q, Sum, Count, F, Func
+from django.db.models.functions import TruncMonth, TruncWeek
 
+import matplotlib.pyplot as plt
+import io
+import base64
+import pandas as pd
+import numpy as np
 
 from datetime import datetime
-from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra
+from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra, Categorias
 from .forms import UsuarioForm, LaboratorioForm, ProveedorForm, MedicamentoForm, VentaForm, DetalleVentaForm
-
-# Vamos a llamar a Usuario y producto
+from pgmpy.models import DynamicBayesianNetwork as DBN
+from pgmpy.estimators import MaximumLikelihoodEstimator
+from pgmpy.inference import DBNInference
 
 
 # Create your views here.
@@ -266,10 +273,74 @@ def activate_medicamento_view(request, id):
     return redirect('Medicamentos')  # Cambia según tu URL de lista
 
 
+#//////////////////////////////////////////////////////////////Todo aqui sera para el analisi BA
+def obtener_datos_ventas():
+    # Obtiene los datos de ventas y realiza las transformaciones necesarias
+    ventas = DetalleVenta.objects.filter(activo=True).values(
+        'medicamento__nombre',
+        'medicamento__categoria__nombre_categoria',
+        'venta__fecha_venta',
+        'cantidad'
+    )
+    df = pd.DataFrame(ventas)
+    df['venta__fecha_venta'] = pd.to_datetime(df['venta__fecha_venta'], errors='coerce')
+    df['mes'] = df['venta__fecha_venta'].dt.to_period('M')
+    df['fecha'] = df['mes'].dt.to_timestamp()
+    df = df.groupby(['medicamento__nombre', 'medicamento__categoria__nombre_categoria', 'fecha'])['cantidad'].sum().reset_index()
 
-# Vista del dashboard
-def dashboard_view(request):
-    return render(request, 'dashboard.html')
+    # Renombramos las columnas para mayor claridad
+    df.rename(columns={
+        'medicamento__nombre': 'medicamento',
+        'medicamento__categoria__nombre_categoria': 'categoria',
+    }, inplace=True)
+    
+    return df
+
+def generar_grafico(df):
+    # Genera un gráfico de las ventas por medicamento
+    plt.figure(figsize=(10, 6))
+    for medicamento in df['medicamento'].unique():
+        datos_medicamento = df[df['medicamento'] == medicamento]
+        plt.plot(datos_medicamento['fecha'], datos_medicamento['cantidad'], label=medicamento)
+
+    plt.title('Tendencias de Medicamentos Más Vendidos')
+    plt.xlabel('Fecha')
+    plt.ylabel('Cantidad Vendida')
+    plt.legend()
+    plt.grid()
+
+    # Guardar gráfico como imagen
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    buf.close()
+    return image_base64
+
+
+def dashboard_view_ventas(request):
+    # Obtener datos de ventas históricos
+    df_ventas = obtener_datos_ventas()
+
+    # Generar gráfico con las tendencias
+    imagen_grafico = generar_grafico(df_ventas)
+
+    # Pasar los datos y gráfico al contexto para visualización en la plantilla
+    contexto = {
+        'df_ventas': df_ventas.to_dict(orient='records'),  # Datos históricos de ventas
+        'imagen_grafico': imagen_grafico,  # Gráfico generado en formato base64
+    }
+
+    return render(request, 'dashboard_ventas.html', contexto)
+
+def dashboard_view_inventario(request):
+    return render(request, 'dashboard_inventario.html')
+# Vista del dashboard de los proveedores
+def dashboard_view_proveedores(request):
+    return render(request, 'dashboard_proveedores.html')
+# Vista del dashboard de los usuarios
+def dashboard_view_usuarios(request):
+    return render(request, 'dashboard_usuarios.html')
 
 
 ###/////////////////////////////Todo esto va a ser para el login
