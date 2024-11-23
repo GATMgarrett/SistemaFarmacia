@@ -34,7 +34,7 @@ def model(X, y=None):
 
 # Iniciar inferencia con NUTS
 nuts_kernel = NUTS(model, target_accept_prob=0.8)
-mcmc = MCMC(nuts_kernel, num_samples=150, warmup_steps=50)
+mcmc = MCMC(nuts_kernel, num_samples=100, warmup_steps=50)
 mcmc.run(X_tensor, y_tensor)
 
 # Obtener muestras posteriores
@@ -42,8 +42,8 @@ posterior_samples = mcmc.get_samples()
 alpha = posterior_samples['alpha']  # [num_samples]
 beta = posterior_samples['beta']    # [num_samples, num_features]
 
-# Generar datos para los próximos 12 meses
-future_dates = pd.date_range(start='2024-12-01', periods=12, freq='MS')
+# Generar datos para los próximos 6 meses (modificación)
+future_dates = pd.date_range(start='2024-12-01', periods=6, freq='MS')  # 6 meses en vez de 12
 future_data = pd.DataFrame({'fecha_venta': future_dates})
 future_data['mes'] = future_data['fecha_venta'].dt.month
 future_data['año'] = future_data['fecha_venta'].dt.year

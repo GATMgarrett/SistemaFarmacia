@@ -3,13 +3,16 @@
 {% block content %}
 <div class="container mt-4">
     <h1 class="mb-4">Dashboard de Ventas</h1>
-    <ul class="list-group mb-4">
-        {% for mes, prediccion in predicciones.items %}
-        <li class="list-group-item">{{ mes }}: {{ prediccion.cantidad }}</li>
-        {% endfor %}
-    </ul>
+    
+    <h2 class="mb-3">Análisis Descriptivo</h2>
+    <!-- Gráfico de Líneas de ventas de los Medicamentos -->
+    <div class="mb-5">
+        {{ grafico_lineas_html|safe }}
+    </div>
 
-    <h2 class="mb-3">analisis descriptivo</h2>
-    <img src="data:image/png;base64,{{ imagen_grafico }}" alt="Gráfico de Ventas y Predicciones" class="img-fluid">
+    <!-- Gráfico de Barras para mostrar los totales de ventas por categoria de cada medicamento -->
+    <div>
+        {{ grafico_barras_html|safe }}
+    </div>
 </div>
 {% endblock %}

@@ -18,6 +18,8 @@ from django.db.models import Q, Sum, Count, F, Func
 from django.db.models.functions import TruncMonth, TruncWeek
 
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 import io
 import base64
 import pandas as pd
@@ -273,7 +275,7 @@ def activate_medicamento_view(request, id):
     return redirect('Medicamentos')  # Cambia según tu URL de lista
 
 
-#//////////////////////////////////////////////////////////////Todo aqui sera para el analisi BA
+#//////////////////////////////////////////////////////////////////////////////////////Todo aqui sera para el analisi BA
 def obtener_datos_ventas():
     # Obtiene los datos de ventas y realiza las transformaciones necesarias
     ventas = DetalleVenta.objects.filter(activo=True).values(
@@ -296,41 +298,56 @@ def obtener_datos_ventas():
     
     return df
 
-def generar_grafico(df):
-    # Genera un gráfico de las ventas por medicamento
-    plt.figure(figsize=(10, 6))
-    for medicamento in df['medicamento'].unique():
-        datos_medicamento = df[df['medicamento'] == medicamento]
-        plt.plot(datos_medicamento['fecha'], datos_medicamento['cantidad'], label=medicamento)
+# Nueva función para generar el gráfico de barras con Plotly
+def generar_grafico_barras(df):
+    fig = px.bar(
+        df,
+        x='medicamento',
+        y='cantidad',
+        color='categoria',
+        title='Cantidad de ventas por categoria y medicamento',
+        labels={'cantidad': 'Cantidad Vendida', 'medicamento': 'Medicamento'}
+    )
+    fig.update_layout(template='plotly_white')
+    return fig.to_html(full_html=False)
 
-    plt.title('Tendencias de Medicamentos Más Vendidos')
-    plt.xlabel('Fecha')
-    plt.ylabel('Cantidad Vendida')
-    plt.legend()
-    plt.grid()
+def generar_grafico_con_plotly(df):
+    fig = px.line(
+        df,
+        x='fecha',
+        y='cantidad',
+        color='medicamento',
+        title='Cantidad vendida por medicamento',
+        labels={
+            'fecha': 'Fecha',
+            'cantidad': 'Cantidad Vendida',
+            'medicamento': 'Medicamento'
+        }
+    )
+    fig.update_traces(mode='lines+markers')
+    fig.update_layout(
+        xaxis_title="Fecha",
+        yaxis_title="Cantidad Vendida",
+        legend_title="Medicamento",
+        template="plotly_white"
+    )
+    return fig.to_html(full_html=False)
 
-    # Guardar gráfico como imagen
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    image_base64 = base64.b64encode(buf.read()).decode('utf-8')
-    buf.close()
-    return image_base64
-
-
+# Actualizamos la vista para incluir el gráfico interactivo
 def dashboard_view_ventas(request):
     # Obtener datos de ventas históricos
     df_ventas = obtener_datos_ventas()
 
-    # Generar gráfico con las tendencias
-    imagen_grafico = generar_grafico(df_ventas)
+    # Generar gráficos interactivos
+    grafico_lineas_html = generar_grafico_con_plotly(df_ventas)
+    grafico_barras_html = generar_grafico_barras(df_ventas)
 
-    # Pasar los datos y gráfico al contexto para visualización en la plantilla
+    # Pasar los datos y gráficos al contexto
     contexto = {
         'df_ventas': df_ventas.to_dict(orient='records'),  # Datos históricos de ventas
-        'imagen_grafico': imagen_grafico,  # Gráfico generado en formato base64
+        'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
+        'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
     }
-
     return render(request, 'dashboard_ventas.html', contexto)
 
 def dashboard_view_inventario(request):
@@ -341,7 +358,6 @@ def dashboard_view_proveedores(request):
 # Vista del dashboard de los usuarios
 def dashboard_view_usuarios(request):
     return render(request, 'dashboard_usuarios.html')
-
 
 ###/////////////////////////////Todo esto va a ser para el login
 def login_view(request):
@@ -360,7 +376,7 @@ def login_view(request):
         
     else:
         return render(request, "registration/login.html")
-    
+
 ###/////////////////////////////////////////////////////////////////////////Esto va a ser para las vistas de ventas y detalle ventas
 
 @login_required
