@@ -6,10 +6,22 @@
 
 <!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
-<div>
-    <h1>Proveedores y compras:</h1>
-    <h2>Proveedor más frecuente o confiable.</h2>
-    <h3>Medicamentos más comprados en términos de cantidad o costo.</h3>
+<div class="container mt-4">
+    <h1>Proveedores y Compras</h1>
 
+    <h2>Proveedores más frecuentes</h2>
+    <div>
+        {{ grafico_proveedores_html|safe }}
+    </div>
+
+    <h2>Medicamentos más comprados (por cantidad)</h2>
+    <div>
+        {{ grafico_medicamentos_cantidad_html|safe }}
+    </div>
+
+    <h2>Medicamentos más comprados (por costo)</h2>
+    <div>
+        {{ grafico_medicamentos_costo_html|safe }}
+    </div>
 </div>
 {% endblock %}

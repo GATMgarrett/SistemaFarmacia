@@ -1,15 +1,18 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
-
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
 
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
 <div>
     <h1>Usuarios o clientes:</h1>
-    <h2>Frecuencia de ventas por usuario.</h2>
-    <h3>Contribución de cada vendedor al ingreso total.</h3>
 
+    <h2>Frecuencia de Ventas por Usuario</h2>
+    <div>
+        {{ grafico_frecuencia_html|safe }}
+    </div>
+
+    <h2>Contribución de cada Vendedor al Ingreso Total</h2>
+    <div>
+        {{ grafico_contribucion_html|safe }}
+    </div>
 </div>
 {% endblock %}

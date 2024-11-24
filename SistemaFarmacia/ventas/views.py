@@ -25,12 +25,20 @@ import base64
 import pandas as pd
 import numpy as np
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra, Categorias
 from .forms import UsuarioForm, LaboratorioForm, ProveedorForm, MedicamentoForm, VentaForm, DetalleVentaForm
 from pgmpy.models import DynamicBayesianNetwork as DBN
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import DBNInference
+
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+# Ruta al archivo JSON de la clave privada descargado desde la consola de Firebase
+cred = credentials.Certificate('C:\ProyectoGrado\SistemaFarmacia\SistemaFarmacia\secrets/sistemafarmacia-87e60-firebase-adminsdk-ar1j6-480ea9d19a.json')
+firebase_admin.initialize_app(cred)
+
 
 
 # Create your views here.
@@ -274,8 +282,9 @@ def activate_medicamento_view(request, id):
     medicamento.save()
     return redirect('Medicamentos')  # Cambia según tu URL de lista
 
-
+#////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #//////////////////////////////////////////////////////////////////////////////////////Todo aqui sera para el analisi BA
+#/////////////////////////////////////////////////////////////////////Esto va a pertenecer al analsisid de ventas
 def obtener_datos_ventas():
     # Obtiene los datos de ventas y realiza las transformaciones necesarias
     ventas = DetalleVenta.objects.filter(activo=True).values(
@@ -349,15 +358,327 @@ def dashboard_view_ventas(request):
         'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
     }
     return render(request, 'dashboard_ventas.html', contexto)
+#////////////////////////////Esto va a aportar a la parte de gestion de inventario
+def obtener_medicamentos_baja_rotacion():
+    # Ventas en los últimos 3 meses
+    fecha_limite = now().date() - timedelta(days=90)
+    ventas = DetalleVenta.objects.filter(venta__fecha_venta__gte=fecha_limite, activo=True).values(
+        'medicamento__id', 'medicamento__nombre'
+    ).annotate(total_vendido=Sum('cantidad'))
+
+    medicamentos_venta = {venta['medicamento__id']: venta['total_vendido'] for venta in ventas}
+
+    # Medicamentos con baja o sin rotación
+    medicamentos = Medicamentos.objects.filter(activo=True)
+    medicamentos_baja_rotacion = [
+        med for med in medicamentos
+        if med.id not in medicamentos_venta or medicamentos_venta[med.id] < 10  # Umbral de baja rotación
+    ]
+    return medicamentos_baja_rotacion
+def generar_grafico_pastel_baja_rotacion(medicamentos_baja_rotacion, total_medicamentos):
+    # Datos para el gráfico
+    labels = ['Baja Rotación', 'Otros Medicamentos']
+    values = [len(medicamentos_baja_rotacion), total_medicamentos - len(medicamentos_baja_rotacion)]
+
+    print("Labels:", labels)  # Temporal
+    print("Values:", values)  # Temporal
+
+    # Crear el gráfico
+    fig = px.pie(
+        values=values,
+        names=labels,
+        title='Proporción de Medicamentos con Baja Rotación',
+        hole=0.4,  # Para crear un gráfico tipo "donut"
+    )
+    fig.update_layout(template='plotly_white')
+    return fig.to_html(full_html=False)
+"""
+def enviar_notificacion_push(token, title, body):
+    try:
+        # Crear el mensaje
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body
+            ),
+            token=token,  # Token del dispositivo móvil al que se enviará la notificación
+        )
+
+        # Enviar el mensaje
+        response = messaging.send(message)
+        print('Mensaje enviado con éxito:', response)
+    except Exception as e:
+        print('Error al enviar la notificación:', e)
+"""
+def obtener_medicamentos_proximos_a_vencer():
+    fecha_actual = now().date()
+    fecha_limite = fecha_actual + timedelta(days=30)  # Lotes que vencen en los próximos 30 días
+
+    # Filtrar lotes activos que estén próximos a vencer (pero no ya vencidos)
+    lotes_vencer = LoteMedicamento.objects.filter(
+        fecha_vencimiento__gt=fecha_actual,  # Fecha mayor que hoy
+        fecha_vencimiento__lte=fecha_limite,  # Fecha menor o igual a la fecha límite
+        activo=True
+    )
+
+    proximos_a_vencer = []
+    for lote in lotes_vencer:
+        proximos_a_vencer.append({
+            'medicamento': lote.medicamento.nombre,
+            'cantidad': lote.cantidad,
+            'fecha_vencimiento': lote.fecha_vencimiento
+        })
+    """
+        # Enviar notificaciones a los dispositivos móviles
+    for lote in proximos_a_vencer:
+        mensaje = f"El medicamento {lote['medicamento']} está por vencer. Vencimiento: {lote['fecha_vencimiento']}"
+        
+        # Obtener los tokens de los usuarios registrados
+        usuarios = User.objects.all()  # O filtra según lo que necesites
+        for usuario in usuarios:
+            token = usuario.profile.fcm_token  # Asume que has guardado el token en el perfil del usuario
+            if token:
+                # Enviar la notificación
+                enviar_notificacion_push(token, "Medicamento próximo a vencer", mensaje)
+    """
+    return proximos_a_vencer
+
+def obtener_alertas_stock_minimo(umbral=10):
+    medicamentos_bajo_stock = Medicamentos.objects.filter(stock__lte=umbral, activo=True)
+    alertas = []
+    for med in medicamentos_bajo_stock:
+        alertas.append({
+            'nombre': med.nombre,
+            'stock_actual': med.stock,
+            'umbral': umbral
+        })
+    return alertas
+
+def generar_grafico_barras_stock_minimo(alertas_stock_minimo):
+    # Extraer datos para el gráfico
+    nombres = [alerta['nombre'] for alerta in alertas_stock_minimo]
+    stock_actual = [alerta['stock_actual'] for alerta in alertas_stock_minimo]
+    umbrales = [alerta['umbral'] for alerta in alertas_stock_minimo]
+
+    # Crear el gráfico
+    fig = px.bar(
+        x=stock_actual,
+        y=nombres,
+        orientation='h',  # Barras horizontales
+        text=stock_actual,  # Mostrar valores sobre las barras
+        title='Medicamentos con Stock por Debajo del Umbral',
+        labels={'x': 'Stock Actual', 'y': 'Medicamentos'}
+    )
+    
+    # Añadir línea de umbral
+    fig.add_scatter(
+        x=umbrales,
+        y=nombres,
+        mode='lines',
+        name='Umbral',
+        line=dict(color='red', dash='dash')
+    )
+    
+    # Configuración adicional
+    fig.update_layout(template='plotly_white', showlegend=True)
+    return fig.to_html(full_html=False)
 
 def dashboard_view_inventario(request):
-    return render(request, 'dashboard_inventario.html')
+    # Obtener los medicamentos con baja rotación
+    medicamentos_baja_rotacion = obtener_medicamentos_baja_rotacion()
+
+    # Total de medicamentos activos
+    total_medicamentos = Medicamentos.objects.filter(activo=True).count()
+
+    # Generar gráfico de pastel para baja rotación
+    grafico_baja_rotacion_html = generar_grafico_pastel_baja_rotacion(
+        medicamentos_baja_rotacion, total_medicamentos
+    )
+
+    # Obtener los medicamentos cercanos al vencimiento
+    medicamentos_proximos_a_vencer = obtener_medicamentos_proximos_a_vencer()
+
+    # Obtener las alertas de stock mínimo
+    alertas_stock_minimo = obtener_alertas_stock_minimo()
+
+    # Generar gráfico de barras para stock mínimo
+    grafico_stock_minimo_html = generar_grafico_barras_stock_minimo(alertas_stock_minimo)
+
+    # Pasar los datos al contexto para la plantilla
+    contexto = {
+        'medicamentos_baja_rotacion': medicamentos_baja_rotacion,
+        'grafico_baja_rotacion_html': grafico_baja_rotacion_html,
+        'medicamentos_proximos_a_vencer': medicamentos_proximos_a_vencer,
+        'alertas_stock_minimo': alertas_stock_minimo,
+        'grafico_stock_minimo_html': grafico_stock_minimo_html,
+    }
+    return render(request, 'dashboard_inventario.html', contexto)
+
+def cargar_datos_compras():
+    # Cargar datos de compras y proveedores
+    compras = Compras.objects.filter(activo=True).select_related('proveedor')
+    compras_df = pd.DataFrame.from_records(
+        compras.values('id', 'proveedor__nombre_empresa', 'fecha_compra', 'precio_total')
+    )
+    return compras_df
+
+def cargar_datos_detalle_compras():
+    # Cargar datos de los detalles de las compras
+    detalles = DetalleCompra.objects.filter(activo=True).select_related('compra', 'medicamento')
+    detalles_df = pd.DataFrame.from_records(
+        detalles.values(
+            'compra__id', 
+            'medicamento__nombre', 
+            'cantidad', 
+            'precio'
+        ).annotate(total_costo=F('cantidad') * F('precio'))
+    )
+    return detalles_df
+
+def analizar_proveedor_frecuente(compras_df):
+    # Agrupar por proveedor y contar compras
+    proveedor_frecuente = (
+        compras_df.groupby('proveedor__nombre_empresa')
+        .size()
+        .reset_index(name='cantidad_compras')
+        .sort_values(by='cantidad_compras', ascending=False)
+    )
+    return proveedor_frecuente
+
+def analizar_medicamentos_mas_comprados(detalles_df, por='cantidad'):
+    if por == 'cantidad':
+        # Agrupar por medicamento y sumar cantidades
+        medicamentos = (
+            detalles_df.groupby('medicamento__nombre')['cantidad']
+            .sum()
+            .reset_index(name='cantidad_total')
+            .sort_values(by='cantidad_total', ascending=False)
+        )
+    elif por == 'costo':
+        # Agrupar por medicamento y sumar costos
+        medicamentos = (
+            detalles_df.groupby('medicamento__nombre')['total_costo']
+            .sum()
+            .reset_index(name='costo_total')
+            .sort_values(by='costo_total', ascending=False)
+        )
+    return medicamentos
+
+def grafico_proveedor_frecuente(proveedor_frecuente):
+    fig = px.bar(
+        proveedor_frecuente,
+        x='cantidad_compras',
+        y='proveedor__nombre_empresa',
+        title="Proveedores más frecuentes",
+        orientation='h',  # Barras horizontales
+        labels={'cantidad_compras': 'Número de Compras', 'proveedor__nombre_empresa': 'Proveedor'},
+        text='cantidad_compras',  # Mostrar valores en las barras
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(template='plotly_white', showlegend=False)
+    return fig.to_html(full_html=False)
+
+def grafico_medicamentos_mas_comprados(medicamentos, por='cantidad'):
+    titulo = "Medicamentos más comprados (por cantidad)" if por == 'cantidad' else "Medicamentos más comprados (por costo)"
+    y_col = 'cantidad_total' if por == 'cantidad' else 'costo_total'
+
+    fig = px.bar(
+        medicamentos,
+        x=y_col,
+        y='medicamento__nombre',
+        title=titulo,
+        orientation='h',  # Barras horizontales
+        labels={y_col: "Cantidad Total" if por == 'cantidad' else "Costo Total", 'medicamento__nombre': "Medicamento"},
+        text=y_col,  # Mostrar valores en las barras
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(template='plotly_white', showlegend=False)
+    return fig.to_html(full_html=False)
+
 # Vista del dashboard de los proveedores
 def dashboard_view_proveedores(request):
-    return render(request, 'dashboard_proveedores.html')
+    # Cargar datos
+    compras_df = cargar_datos_compras()
+    detalles_df = cargar_datos_detalle_compras()
+
+    # Análisis
+    proveedor_frecuente = analizar_proveedor_frecuente(compras_df)
+    medicamentos_por_cantidad = analizar_medicamentos_mas_comprados(detalles_df, por='cantidad')
+    medicamentos_por_costo = analizar_medicamentos_mas_comprados(detalles_df, por='costo')
+
+    # Generar gráficos
+    grafico_proveedores_html = grafico_proveedor_frecuente(proveedor_frecuente)
+    grafico_medicamentos_cantidad_html = grafico_medicamentos_mas_comprados(medicamentos_por_cantidad, por='cantidad')
+    grafico_medicamentos_costo_html = grafico_medicamentos_mas_comprados(medicamentos_por_costo, por='costo')
+
+    # Contexto para el template
+    contexto = {
+        'grafico_proveedores_html': grafico_proveedores_html,
+        'grafico_medicamentos_cantidad_html': grafico_medicamentos_cantidad_html,
+        'grafico_medicamentos_costo_html': grafico_medicamentos_costo_html,
+    }
+
+    return render(request, 'dashboard_proveedores.html', contexto)
+
 # Vista del dashboard de los usuarios
+def cargar_datos_ventas():
+    # Extraer las ventas y usuarios activos
+    ventas = Ventas.objects.filter(activo=True).values('id', 'usuario__username', 'fecha_venta', 'precio_total')
+    return pd.DataFrame(list(ventas))
+def analizar_frecuencia_ventas(df_ventas):
+    # Agrupar por usuario y contar las ventas
+    frecuencia = df_ventas.groupby('usuario__username').size().reset_index(name='frecuencia')
+    frecuencia = frecuencia.sort_values(by='frecuencia', ascending=False)
+    return frecuencia
+def analizar_contribucion_ingresos(df_ventas):
+    # Agrupar por usuario y sumar los ingresos
+    contribucion = df_ventas.groupby('usuario__username')['precio_total'].sum().reset_index(name='ingreso_total')
+    contribucion = contribucion.sort_values(by='ingreso_total', ascending=False)
+    return contribucion
+def grafico_frecuencia_ventas(frecuencia):
+    fig = px.bar(
+        frecuencia,
+        x='frecuencia',
+        y='usuario__username',
+        orientation='h',  # Barras horizontales
+        title='Frecuencia de Ventas por Usuario',
+        labels={'frecuencia': 'Número de Ventas', 'usuario__username': 'Usuario'},
+        text='frecuencia',  # Mostrar valores en las barras
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(template='plotly_white', showlegend=False)
+    return fig.to_html(full_html=False)
+def grafico_contribucion_ingresos(contribucion):
+    fig = px.pie(
+        contribucion,
+        names='usuario__username',
+        values='ingreso_total',
+        title='Contribución de cada Vendedor al Ingreso Total',
+        hole=0.4,  # Gráfico tipo donut
+        labels={'usuario__username': 'Usuario', 'ingreso_total': 'Ingreso Total'}
+    )
+    fig.update_traces(textinfo='percent+label')
+    fig.update_layout(template='plotly_white')
+    return fig.to_html(full_html=False)
 def dashboard_view_usuarios(request):
-    return render(request, 'dashboard_usuarios.html')
+    # Cargar datos
+    ventas_df = cargar_datos_ventas()
+
+    # Análisis
+    frecuencia_ventas = analizar_frecuencia_ventas(ventas_df)
+    contribucion_ingresos = analizar_contribucion_ingresos(ventas_df)
+
+    # Generar gráficos
+    grafico_frecuencia_html = grafico_frecuencia_ventas(frecuencia_ventas)
+    grafico_contribucion_html = grafico_contribucion_ingresos(contribucion_ingresos)
+
+    # Contexto para el template
+    contexto = {
+        'grafico_frecuencia_html': grafico_frecuencia_html,
+        'grafico_contribucion_html': grafico_contribucion_html,
+    }
+
+    return render(request, 'dashboard_usuarios.html', contexto)
 
 ###/////////////////////////////Todo esto va a ser para el login
 def login_view(request):

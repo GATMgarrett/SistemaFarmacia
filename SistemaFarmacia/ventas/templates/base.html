@@ -34,6 +34,7 @@
   <link rel="stylesheet" href="{% static 'jquery-ui/jquery-ui.min.css' %}">
   <script src="{% static 'jquery-ui/jquery-ui.min.js' %}"></script>
   <script type="text/javascript" charset="utf8" src="{% static 'index/js/sweet.js' %}"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
 </head>
 
@@ -236,3 +237,26 @@
 </body>
 
 </html>
+
+
+<!-- Agregar este código en la parte inferior de tu plantilla, antes de cerrar la etiqueta </body> -->
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
+  
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyAO-jbPHYiHU2wEmDPDgAjnsl5YCz-AIGg",
+    authDomain: "sistemafarmacia-87e60.firebaseapp.com",
+    projectId: "sistemafarmacia-87e60",
+    storageBucket: "sistemafarmacia-87e60.firebasestorage.app",
+    messagingSenderId: "33840948655",
+    appId: "1:33840948655:web:ac0941dd49a8f11275bb5a",
+    measurementId: "G-Z3D6KR6JQQ"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>

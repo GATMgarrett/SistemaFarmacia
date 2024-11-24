@@ -1,15 +1,66 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
 
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
 
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
-<div>
-    <h1>Gestión de inventario</h1>
-    <h2>Medicamentos con baja rotación o cercanos al vencimiento.</h2>
-    <h3>Alertas de stock mínimo.</h3>
+<div class="container mt-4">
+    <h1>Gestión de Inventario</h1>
+
+    <!-- Medicamentos con baja rotación 
+    <h2>Medicamentos con baja rotación</h2>
+    {% if medicamentos_baja_rotacion %}
+    <ul class="list-group mb-4">
+        {% for medicamento in medicamentos_baja_rotacion %}
+        <li class="list-group-item">{{ medicamento.nombre }}</li>
+        {% endfor %}
+    </ul>
+    <div>
+        <!-- Renderizar el gráfico de pastel 
+        {{ grafico_baja_rotacion_html|safe }}
+    </div>
+    {% else %}
+    <p>No hay medicamentos con baja rotación.</p>
+    {% endif %}
+    -->
+
+    <!-- Medicamentos cercanos al vencimiento -->
+    <h2>Medicamentos cercanos al vencimiento</h2>
+    {% if medicamentos_proximos_a_vencer %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Medicamento</th>
+                <th>Cantidad</th>
+                <th>Fecha de Vencimiento</th>
+                <th>Días Restantes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lote in medicamentos_proximos_a_vencer %}
+            <tr>
+                <td>{{ lote.medicamento }}</td>
+                <td>{{ lote.cantidad }}</td>
+                <td>{{ lote.fecha_vencimiento }}</td>
+                <td>{{ lote.dias_restantes }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% else %}
+    <p>No hay medicamentos cercanos al vencimiento.</p>
+    {% endif %}
+
+    <!-- Alertas de Stock Mínimo -->
+    {% if alertas_stock_minimo %}
+    
+    <div>
+        <!-- Renderizar el gráfico de barras -->
+        {{ grafico_stock_minimo_html|safe }}
+    </div>
+    {% else %}
+    <p>No hay alertas de stock mínimo.</p>
+    {% endif %}
 
 </div>
 {% endblock %}
