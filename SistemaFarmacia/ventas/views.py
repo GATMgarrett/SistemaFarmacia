@@ -23,7 +23,6 @@ import plotly.graph_objects as go
 import io
 import base64
 import pandas as pd
-import numpy as np
 
 from datetime import datetime, timedelta
 from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra, Categorias
