@@ -36,7 +36,7 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 
 # Ruta al archivo JSON de la clave privada descargado desde la consola de Firebase
-cred = credentials.Certificate('C:\ProyectoGrado\SistemaFarmacia\SistemaFarmacia\secrets/sistemafarmacia-87e60-firebase-adminsdk-ar1j6-480ea9d19a.json')
+cred = credentials.Certificate('C:\ProyectoGrado\sistemafarmacia-87e60-firebase-adminsdk-ar1j6-480ea9d19a.json')
 firebase_admin.initialize_app(cred)
 
 
