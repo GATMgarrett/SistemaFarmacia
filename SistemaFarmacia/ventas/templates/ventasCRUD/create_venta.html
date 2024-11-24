@@ -42,7 +42,7 @@
                 <thead>
                     <tr>
                         <th>Nombre</th>
-                        <th>Precio</th>
+                        <th>Precio de Venta</th>
                         <th>Stock</th>
                         <th>Acciones</th>
                     </tr>
@@ -51,7 +51,7 @@
                     {% for medicamento in medicamentos %}
                     <tr>
                         <td>{{ medicamento.nombre }}</td>
-                        <td>{{ medicamento.precio }} bs</td>
+                        <td>{{ medicamento.precio_venta_lote }} bs</td> <!-- Mostrar el precio de venta del lote -->
                         <td>{{ medicamento.stock }}</td>
                         <td>
                             <form method="POST" action="{% url 'add_to_cart' medicamento.id %}">

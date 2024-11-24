@@ -32,6 +32,7 @@ from pgmpy.models import DynamicBayesianNetwork as DBN
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import DBNInference
 
+
 import firebase_admin
 from firebase_admin import credentials, messaging
 
@@ -357,7 +358,9 @@ def dashboard_view_ventas(request):
         'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
         'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
     }
+
     return render(request, 'dashboard_ventas.html', contexto)
+
 #////////////////////////////Esto va a aportar a la parte de gestion de inventario
 def obtener_medicamentos_baja_rotacion():
     # Ventas en los últimos 3 meses
@@ -699,17 +702,21 @@ def login_view(request):
         return render(request, "registration/login.html")
 
 ###/////////////////////////////////////////////////////////////////////////Esto va a ser para las vistas de ventas y detalle ventas
-
 @login_required
 @transaction.atomic
 def create_venta_view(request):
     # Obtener el término de búsqueda desde el GET request
     query = request.GET.get('q', '').strip()
-    
+
     # Filtrar medicamentos activos y, si hay una búsqueda, aplicar filtro adicional
     medicamentos = Medicamentos.objects.filter(activo=True)
     if query:
         medicamentos = medicamentos.filter(Q(nombre__icontains=query))
+
+    # Obtener el precio de venta de los lotes de cada medicamento
+    for medicamento in medicamentos:
+        lote = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True).first()
+        medicamento.precio_venta_lote = lote.precio_venta if lote else 0  # Asignar el precio del lote al medicamento
 
     # Paginación: mostrar 5 medicamentos por página
     paginator = Paginator(medicamentos, 5)  # 5 medicamentos por página
@@ -727,7 +734,13 @@ def create_venta_view(request):
             continue
         medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
         cantidad = item['cantidad']
-        subtotal = medicamento.precio * cantidad
+        
+        # Obtener el precio del lote para este medicamento
+        lote = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True).first()
+        if lote and lote.precio_venta is not None:
+            subtotal = lote.precio_venta * cantidad  # Usar el precio de venta del lote
+        else:
+            subtotal = 0  # O manejar el caso según sea necesario
         productos_carrito.append({
             'medicamento': medicamento,
             'cantidad': cantidad,
@@ -759,31 +772,28 @@ def create_venta_view(request):
                 continue
             medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
             cantidad = item['cantidad']
-            lotes = LoteMedicamento.objects.filter(
-                medicamento=medicamento,
-                activo=True
-            ).order_by('fecha_compra')
+            
+            # Obtener el precio del lote
+            lote = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True).first()
+            if lote and lote.precio_venta is not None:
+                precio_venta = lote.precio_venta  # Usamos el precio de venta del lote
+            else:
+                precio_venta = 0  # Usamos 0 si no se encuentra un precio válido en el lote
 
-            cantidad_requerida = cantidad
-            for lote in lotes:
-                if lote.cantidad >= cantidad_requerida:
-                    lote.cantidad -= cantidad_requerida
-                    if lote.cantidad == 0:
-                        lote.activo = False
-                    lote.save()
-                    break
-                else:
-                    cantidad_requerida -= lote.cantidad
-                    lote.cantidad = 0
-                    lote.activo = False
-                    lote.save()
-
-            DetalleVenta.objects.create(
+            # Crear el DetalleVenta
+            detalle_venta = DetalleVenta.objects.create(
                 venta=venta,
                 medicamento=medicamento,
-                precio=medicamento.precio,
+                precio=precio_venta,  # Asignamos el precio de venta del lote
                 cantidad=cantidad
             )
+            
+            # Procesar el stock con FIFO
+            try:
+                detalle_venta.procesar_fifo()  # Actualizar el stock de los lotes
+            except ValueError as e:
+                messages.error(request, str(e))
+                return redirect('CreateVenta')
 
         request.session['carrito'] = []
         messages.success(request, "La venta se ha registrado exitosamente.")
@@ -795,6 +805,7 @@ def create_venta_view(request):
         'total_carrito': total_carrito,
         'query': query
     })
+
 
 @require_POST
 def add_to_cart(request, medicamento_id):

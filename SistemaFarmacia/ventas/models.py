@@ -115,22 +115,39 @@ class DetalleVenta(models.Model):
     activo = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
-        # Almacena y reduce el stock de cada lote en función del FIFO
+        # Almacenar el precio del lote
+        lote = LoteMedicamento.objects.filter(medicamento=self.medicamento, activo=True).first()
+        if lote:
+            self.precio = lote.precio_venta  # Tomar el precio de venta del lote activo
+        super().save(*args, **kwargs)
+    
+    def procesar_fifo(self):
         cantidad_requerida = self.cantidad
         lotes = LoteMedicamento.objects.filter(
             medicamento=self.medicamento,
             activo=True
-        ).order_by('fecha_compra')
+        ).order_by('fecha_compra')  # Ordenar por fecha de compra (FIFO)
 
         for lote in lotes:
+            if cantidad_requerida <= 0:
+                break  # Si ya no hay cantidad requerida, terminamos
+
             if lote.cantidad >= cantidad_requerida:
+                # Si el lote tiene suficiente cantidad, se reduce el stock
                 lote.cantidad -= cantidad_requerida
+                if lote.cantidad == 0:
+                    lote.activo = False  # Desactivar el lote si ya no tiene stock
                 lote.save()
-                break
+                cantidad_requerida = 0  # Ya no hay más cantidad requerida
             else:
+                # Si el lote tiene menos cantidad que la requerida, se reduce todo el stock del lote
                 cantidad_requerida -= lote.cantidad
                 lote.cantidad = 0
-                lote.activo = False  # Desactiva el lote si ya no tiene stock
+                lote.activo = False  # Desactivar el lote ya que se agotó
                 lote.save()
 
-        super().save(*args, **kwargs)
+        if cantidad_requerida > 0:
+            raise ValueError(f"No hay suficiente stock disponible para el medicamento {self.medicamento.nombre}.")
+
+# Al guardar el DetalleVenta, llamamos a 'procesar_fifo' para gestionar el stock.
+
