@@ -10,9 +10,15 @@
         {{ grafico_lineas_html|safe }}
     </div>
 
-    <!-- Gráfico de Barras para mostrar los totales de ventas por categoria de cada medicamento -->
+    <!-- Gráfico de Barras para mostrar los totales de ventas por categoría de cada medicamento -->
     <div>
         {{ grafico_barras_html|safe }}
+    </div>
+
+    <h2 class="mb-3">Predicción de Ventas</h2>
+    <!-- Gráfico de Predicciones de ventas mensuales -->
+    <div>
+        {{ grafico_predicciones_html|safe }}
     </div>
 </div>
 {% endblock %}

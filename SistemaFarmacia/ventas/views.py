@@ -31,13 +31,13 @@ from pgmpy.models import DynamicBayesianNetwork as DBN
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import DBNInference
 
-
 import firebase_admin
-from firebase_admin import credentials, messaging
+from firebase_admin import credentials, messaging, firestore, initialize_app
+from .analyticsnumpy import obtener_grafico_predicciones  # Importa la función que genera el gráfico
 
 # Ruta al archivo JSON de la clave privada descargado desde la consola de Firebase
-cred = credentials.Certificate('C:\ProyectoGrado\sistemafarmacia-87e60-firebase-adminsdk-ar1j6-480ea9d19a.json')
-firebase_admin.initialize_app(cred)
+cred = credentials.Certificate('C:\\ProyectoGrado\\sistemafarmacia-87e60-firebase-adminsdk-ar1j6-480ea9d19a.json')
+initialize_app(cred)
 
 
 
@@ -344,18 +344,22 @@ def generar_grafico_con_plotly(df):
 
 # Actualizamos la vista para incluir el gráfico interactivo
 def dashboard_view_ventas(request):
-    # Obtener datos de ventas históricos
+    # Obtener datos de ventas históricos (aquí debes integrar tu propio código si es necesario)
     df_ventas = obtener_datos_ventas()
 
     # Generar gráficos interactivos
     grafico_lineas_html = generar_grafico_con_plotly(df_ventas)
     grafico_barras_html = generar_grafico_barras(df_ventas)
 
+    # Obtener el gráfico de predicciones de ventas
+    grafico_predicciones_html = obtener_grafico_predicciones()
+
     # Pasar los datos y gráficos al contexto
     contexto = {
         'df_ventas': df_ventas.to_dict(orient='records'),  # Datos históricos de ventas
         'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
         'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
+        'grafico_predicciones_html': grafico_predicciones_html  # Gráfico de predicciones
     }
 
     return render(request, 'dashboard_ventas.html', contexto)
@@ -394,24 +398,7 @@ def generar_grafico_pastel_baja_rotacion(medicamentos_baja_rotacion, total_medic
     )
     fig.update_layout(template='plotly_white')
     return fig.to_html(full_html=False)
-"""
-def enviar_notificacion_push(token, title, body):
-    try:
-        # Crear el mensaje
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title=title,
-                body=body
-            ),
-            token=token,  # Token del dispositivo móvil al que se enviará la notificación
-        )
 
-        # Enviar el mensaje
-        response = messaging.send(message)
-        print('Mensaje enviado con éxito:', response)
-    except Exception as e:
-        print('Error al enviar la notificación:', e)
-"""
 def obtener_medicamentos_proximos_a_vencer():
     fecha_actual = now().date()
     fecha_limite = fecha_actual + timedelta(days=30)  # Lotes que vencen en los próximos 30 días
@@ -430,20 +417,50 @@ def obtener_medicamentos_proximos_a_vencer():
             'cantidad': lote.cantidad,
             'fecha_vencimiento': lote.fecha_vencimiento
         })
-    """
-        # Enviar notificaciones a los dispositivos móviles
-    for lote in proximos_a_vencer:
-        mensaje = f"El medicamento {lote['medicamento']} está por vencer. Vencimiento: {lote['fecha_vencimiento']}"
-        
-        # Obtener los tokens de los usuarios registrados
-        usuarios = User.objects.all()  # O filtra según lo que necesites
-        for usuario in usuarios:
-            token = usuario.profile.fcm_token  # Asume que has guardado el token en el perfil del usuario
-            if token:
-                # Enviar la notificación
-                enviar_notificacion_push(token, "Medicamento próximo a vencer", mensaje)
-    """
     return proximos_a_vencer
+
+def obtener_medicamentos_proximos_a_vencer_firebase():
+    fecha_actual = now().date()
+    fecha_limite = fecha_actual + timedelta(days=30)
+
+    lotes_vencer = LoteMedicamento.objects.filter(
+        fecha_vencimiento__gt=fecha_actual,
+        fecha_vencimiento__lte=fecha_limite,
+        activo=True
+    )
+
+    proximos_a_vencer = []
+    for lote in lotes_vencer:
+        proximos_a_vencer.append({
+            'medicamento': lote.medicamento.nombre,
+            'cantidad': lote.cantidad,
+            'fecha_vencimiento': lote.fecha_vencimiento.isoformat()  # Convertir a formato ISO (cadena)
+        })
+    return proximos_a_vencer
+
+def enviar_medicamentos_a_firestore():
+    datos = obtener_medicamentos_proximos_a_vencer_firebase()
+
+    db = firestore.client()
+    doc_ref = db.collection("medicamentos_vencer").document("lista")
+
+    try:
+        doc_ref.set({"medicamentos": datos})
+        print("Datos subidos a Firestore con éxito")
+    except Exception as e:
+        print("Error al subir datos a Firestore:", e)
+
+    # Verifica si los datos se subieron correctamente
+    doc = doc_ref.get()
+    if doc.exists:
+        print("Documento Firestore:", doc.to_dict())
+    else:
+        print("Documento no encontrado en Firestore")
+
+
+
+# Llamar a la función para enviar los medicamentos
+enviar_medicamentos_a_firestore()
 
 def obtener_alertas_stock_minimo(umbral=10):
     medicamentos_bajo_stock = Medicamentos.objects.filter(stock__lte=umbral, activo=True)
