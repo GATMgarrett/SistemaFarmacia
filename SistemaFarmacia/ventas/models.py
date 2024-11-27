@@ -117,10 +117,16 @@ class DetalleVenta(models.Model):
     def save(self, *args, **kwargs):
         # Almacenar el precio del lote
         lote = LoteMedicamento.objects.filter(medicamento=self.medicamento, activo=True).first()
+
         if lote:
-            self.precio = lote.precio_venta  # Tomar el precio de venta del lote activo
+            # Si hay un lote activo, tomar el precio de venta del lote
+            self.precio = lote.precio_venta if lote.precio_venta is not None else 0  # Establecer precio a 0 si no hay precio
+        else:
+            # Si no se encuentra un lote activo, establecer precio a 0 o lanzar un error si es necesario
+            self.precio = 0  # O lanzar un error si prefieres no permitir ventas sin precio
+
         super().save(*args, **kwargs)
-    
+
     def procesar_fifo(self):
         cantidad_requerida = self.cantidad
         lotes = LoteMedicamento.objects.filter(
