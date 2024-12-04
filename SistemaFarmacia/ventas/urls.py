@@ -4,6 +4,11 @@ from . import views
 
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth.decorators import user_passes_test
+
+def is_admin(user):
+    # Verifica si el usuario tiene el grupo 'Administrador'
+    return user.groups.filter(name='Administrador').exists()
 
 urlpatterns = [
     
@@ -20,10 +25,13 @@ urlpatterns = [
     path('compras/create/', views.create_compra_view, name='CreateCompra'),
     path('Compras/add_to_cart_compra/<int:medicamento_id>/', views.add_to_cart_compra, name='add_to_cart_compra'),
     path('remove_from_cart_compra/<int:medicamento_id>/', views.remove_from_cart_compra, name='remove_from_cart_compra'),
+    path('compras/export/', views.export_compras_to_excel, name='export_compras_excel'),  # Ruta para exportar a Excel
     
     # urls for the views of the users
-    path('usuario/', views.usuarios_view, name='Usuarios'),
-    path('usuario/create/', views.create_user_view, name='CreateUsuarios'),
+    path('usuario/', user_passes_test(is_admin)(views.usuarios_view), name='Usuarios'),
+    #path('usuario/', views.usuarios_view, name='Usuarios'),
+    #path('usuario/create/', views.create_user_view, name='CreateUsuarios'),
+    path('usuario/create/', user_passes_test(is_admin)(views.create_user_view), name='CreateUsuarios'),
     path('deleteUsuario/<int:id>', views.delete_user_view, name='DeleteUsuarios'),
     path('usuario/update/<int:id>', views.update_user_view, name='UpdateUsuarios'),
     path('activateUsuario/<int:id>', views.activate_user_view, name='ActivateUsuarios'),

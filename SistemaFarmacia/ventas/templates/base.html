@@ -76,80 +76,110 @@
                with font-awesome or any other icon font library -->
 
             <li class="nav-header">OPCIONES</li>
+
+            <!-- Ventas -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos or "Auxiliar" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Ventas' %}" class="nav-link">
                 <i class="nav-icon far fa-calendar-alt"></i>
-                <p>
-                  Ventas
-                </p>
+                <p>Ventas</p>
               </a>
             </li>
+            {% endif %}
+
+            <!-- Inventario -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos or "Auxiliar" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Medicamentos' %}" class="nav-link">
                 <i class="nav-icon fas fa-boxes"></i>
-                <p>
-                  Inventario
-                </p>
+                <p>Inventario</p>
               </a>
             </li>
+            {% endif %}
 
+            <!-- Compras -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Compras' %}" class="nav-link">
                 <i class="nav-icon fas fa-industry"></i>
-                <p>
-                  Compras
-                </p>
+                <p>Compras</p>
               </a>
             </li>
-            
-            
+            {% endif %}
+
             <li class="nav-header">EMPRESA</li>
+
+            <!-- Usuarios -->
+            {% if "Administrador" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Usuarios' %}" class="nav-link">
                 <i class="nav-icon fas fa-users"></i>
                 <p>Usuarios</p>
               </a>
             </li>
-              <li class="nav-item">
-                <a href="{% url 'Proveedores' %}" class="nav-link">
-                  <i class=" nav-icon fas fa-globe"></i>
-                  <p>Proveedores</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="{% url 'Laboratorios' %}" class="nav-link">
-                  <i class="nav-icon fas fa-users"></i>
-                  <p>Laboratorios</p>
-                </a>
-              </li>
+            {% endif %}
+
+            <!-- Proveedores -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos %}
+            <li class="nav-item">
+              <a href="{% url 'Proveedores' %}" class="nav-link">
+                <i class="nav-icon fas fa-globe"></i>
+                <p>Proveedores</p>
+              </a>
+            </li>
+            {% endif %}
+
+            <!-- Laboratorios -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos %}
+            <li class="nav-item">
+              <a href="{% url 'Laboratorios' %}" class="nav-link">
+                <i class="nav-icon fas fa-users"></i>
+                <p>Laboratorios</p>
+              </a>
+            </li>
+            {% endif %}
 
             <li class="nav-header">DASHBOARD BA</li>
+
+            <!-- Dashboard de ventas -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Dashboard_ventas' %}" class="nav-link">
                 <i class="nav-icon fas fa-chart-line"></i>
                 <p>Análisis de ventas</p>
               </a>
             </li>
+            {% endif %}
+            <!-- Dashboard de inventario -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Dashboard_inventario' %}" class="nav-link">
                 <i class="nav-icon fas fa-chart-line"></i>
                 <p>Gestión de inventario</p>
               </a>
             </li>
+            {% endif %}
+            <!-- Dashboard de inventario -->
+            {% if "Administrador" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Dashboard_proveedores' %}" class="nav-link">
                 <i class="nav-icon fas fa-chart-line"></i>
                 <p>Proveedores y compras</p>
               </a>
             </li>
+            {% endif %}
+            <!-- Dashboard de usuarios -->
+            {% if "Administrador" in grupos %}
             <li class="nav-item">
               <a href="{% url 'Dashboard_usuarios' %}" class="nav-link">
                 <i class="nav-icon fas fa-chart-line"></i>
                 <p>Usuarios </p>
               </a>
             </li>
+            {% endif %}
 
             <li class="nav-header">SISTEMA</li>
+
             <li class="nav-item">
               <a href="{% url 'login' %}" class="nav-link">
                 <i class=" nav-icon fas fa-globe"></i>

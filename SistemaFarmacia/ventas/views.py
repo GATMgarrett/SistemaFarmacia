@@ -25,19 +25,18 @@ import base64
 import pandas as pd
 
 from datetime import datetime, timedelta
-from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra, Categorias
+from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra, Categorias, User
 from .forms import UsuarioForm, LaboratorioForm, ProveedorForm, MedicamentoForm, VentaForm, DetalleVentaForm
 from pgmpy.models import DynamicBayesianNetwork as DBN
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.inference import DBNInference
+from openpyxl import Workbook
 
-import firebase_admin
-from firebase_admin import credentials, messaging, firestore, initialize_app
 from .analyticsnumpy import obtener_grafico_predicciones  # Importa la función que genera el gráfico
 
-# Ruta al archivo JSON de la clave privada descargado desde la consola de Firebase
-cred = credentials.Certificate('C:\\ProyectoGrado\\sistemafarmacia-87e60-firebase-adminsdk-ar1j6-480ea9d19a.json')
-initialize_app(cred)
+
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
 
 
 
@@ -59,6 +58,7 @@ def compras_view(request):
 
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los laboratorios
 # Vista de los laboratorios
+@login_required
 def laboratorios_view(request):
     # Obtener los laboratorios activos e inactivos
     laboratorios_activos = Laboratorios.objects.filter(activo=True)
@@ -76,21 +76,28 @@ def laboratorios_view(request):
     paginator_inactivos = Paginator(laboratorios_inactivos, num_laboratorios)
     laboratorios_inactivos_page = paginator_inactivos.get_page(page)
 
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
     return render(request, 'laboratorios.html', {
         'laboratorios_activos': laboratorios_activos_page,
         'laboratorios_inactivos': laboratorios_inactivos_page,
         'num_laboratorios': num_laboratorios,
+        'grupos': grupos_usuario,  # Pasar los grupos del usuario a la plantilla
+
     })
 # Vista para la creación de laboratorios
+@login_required
 def create_laboratorio_view(request):
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
+
     formulario = LaboratorioForm(request.POST or None)
     if formulario.is_valid():
         laboratorio = formulario.save(commit=False)  # Guarda el formulario sin guardar en la base de datos aún
         laboratorio.activo = True  # Establece activo como True por defecto
         laboratorio.save()  # Ahora guarda en la base de datos
         return redirect('ListaLaboratorios')  # Cambia esta URL según tu configuración
-    return render(request, 'laboratoriosCRUD/create_laboratorio.html', {'formulario': formulario})
+    return render(request, 'laboratoriosCRUD/create_laboratorio.html', {'formulario': formulario}, {'grupos': grupos_usuario })
 # Vista para la edición de laboratorios
+@login_required
 def update_laboratorio_view(request, id):
     laboratorio = get_object_or_404(Laboratorios, id=id)
     formulario = LaboratorioForm(request.POST or None, request.FILES or None, instance=laboratorio)
@@ -112,33 +119,28 @@ def activate_laboratorio_view(request, id):
     return redirect('Laboratorios')
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los usuarios
 # Vista de los usuarios
+@login_required
 def usuarios_view(request):
     # Usuarios activos
     usuarios_activos = User.objects.filter(is_active=True).prefetch_related('groups')
     # Usuarios inactivos
     usuarios_inactivos = User.objects.filter(is_active=False).prefetch_related('groups')
-    
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
+
     return render(request, 'usuarios.html', {
         'usuarios_activos': usuarios_activos,
-        'usuarios_inactivos': usuarios_inactivos
+        'usuarios_inactivos': usuarios_inactivos, 
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     })
 
 # Vista para la creacion de los ususarios
 
-# Vista de los usuarios
-def usuarios_view(request):
-    # Usuarios activos
-    usuarios_activos = User.objects.filter(is_active=True).prefetch_related('groups')
-    # Usuarios inactivos
-    usuarios_inactivos = User.objects.filter(is_active=False).prefetch_related('groups')
-    
-    return render(request, 'usuarios.html', {
-        'usuarios_activos': usuarios_activos,
-        'usuarios_inactivos': usuarios_inactivos
-    })
 
 # Vista para la creación de los usuarios
+@login_required
 def create_user_view(request):
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
+
     if request.method == 'POST':
         formulario = UsuarioForm(request.POST)
         if formulario.is_valid():
@@ -151,9 +153,10 @@ def create_user_view(request):
     else:
         formulario = UsuarioForm()  # Crea una nueva instancia del formulario
 
-    return render(request, 'usuariosCRUD/create_user.html', {'formulario': formulario})
+    return render(request, 'usuariosCRUD/create_user.html', {'formulario': formulario, 'grupos': grupos_usuario})
 
 # Vista para la edición de los usuarios
+@login_required
 def update_user_view(request, id):
     usuario = User.objects.get(id=id)
     formulario = UsuarioForm(request.POST or None, request.FILES or None, instance=usuario)
@@ -178,6 +181,7 @@ def activate_user_view(request, id):
 
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los proveedores
 # Vista de los proveedores
+@login_required
 def proveedores_view(request):
     # Obtén los proveedores activos e inactivos
     proveedores_activos = Proveedores.objects.filter(activo=True)
@@ -195,14 +199,17 @@ def proveedores_view(request):
     paginator_inactivos = Paginator(proveedores_inactivos, items_per_page)
     page_inactivos = request.GET.get('page')
     proveedores_inactivos_pag = paginator_inactivos.get_page(page_inactivos)
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     context = {
         'proveedores_activos': proveedores_activos_pag,
         'proveedores_inactivos': proveedores_inactivos_pag,
-        'items_per_page': items_per_page  # Pasar la opción seleccionada
+        'items_per_page': items_per_page,  # Pasar la opción seleccionada
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     }
     return render(request, 'proveedores.html', context)
 # Vista para la creacion de los proveedores
+@login_required
 def create_proveedor_view(request):
     formulario = ProveedorForm(request.POST or None, request.FILES or None)
     if formulario.is_valid():
@@ -210,6 +217,7 @@ def create_proveedor_view(request):
         return redirect('Proveedores')  # Redirige a la lista de proveedores
     return render(request, 'proveedoresCRUD/create_proveedor.html', {'formulario': formulario})
 # Vista para la edicion de los proveedores
+@login_required
 def update_proveedor_view(request, id):
     proveedores = Proveedores.objects.get(id=id)
     formulario = ProveedorForm(request.POST or None, request.FILES or None, instance=proveedores)
@@ -231,6 +239,7 @@ def activate_proveedor_view(request, id):
     return redirect('Proveedores')  # Redirige a la página de proveedores
 #///////////////////////////////////////////////////////////////Toda esta parte sera solo para los medicamentos(inventario)
 # Vista de los medicamentos
+@login_required
 def medicamentos_view(request):
     # Número de medicamentos por página (por defecto 5)
     num_medicamentos = request.GET.get('num_medicamentos', '5')  # Valor predeterminado: 5
@@ -247,21 +256,27 @@ def medicamentos_view(request):
     paginator_inactivos = Paginator(medicamentos_inactivos, num_medicamentos)
     page_inactivos = request.GET.get('page_inactivos', 1)
     medicamentos_inactivos_page = paginator_inactivos.get_page(page_inactivos)
-
+    # Obtener los grupos del usuario actual
+    grupos_usuario = request.user.groups.values_list('name', flat=True) 
     # Renderizar la plantilla
     return render(request, 'inventario.html', {
         'medicamentos_activos': medicamentos_activos_page,
         'medicamentos_inactivos': medicamentos_inactivos_page,
         'num_medicamentos': num_medicamentos,
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     })
 # Vista para la creación de medicamentos
+@login_required
 def create_medicamento_view(request):
     formulario = MedicamentoForm(request.POST or None, request.FILES or None)
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
+
     if formulario.is_valid():
         formulario.save()
         return redirect('Medicamentos')  # Cambia según tu URL de lista
-    return render(request, 'inventarioCRUD/create_medicamento.html', {'formulario': formulario})
+    return render(request, 'inventarioCRUD/create_medicamento.html', {'formulario': formulario, 'grupos': grupos_usuario})
 # Vista para la edición de medicamentos
+@login_required
 def update_medicamento_view(request, id):
     medicamento = Medicamentos.objects.get(id=id)
     formulario = MedicamentoForm(request.POST or None, request.FILES or None, instance=medicamento)
@@ -320,29 +335,73 @@ def generar_grafico_barras(df):
     fig.update_layout(template='plotly_white')
     return fig.to_html(full_html=False)
 
+# Grafico de las ventas de medicamentos graficado de manera lineal
 def generar_grafico_con_plotly(df):
-    fig = px.line(
-        df,
-        x='fecha',
-        y='cantidad',
-        color='medicamento',
-        title='Cantidad vendida por medicamento',
-        labels={
-            'fecha': 'Fecha',
-            'cantidad': 'Cantidad Vendida',
-            'medicamento': 'Medicamento'
-        }
-    )
-    fig.update_traces(mode='lines+markers')
+    fig = go.Figure()
+
+    # Agregar líneas para cada medicamento
+    categorias = df['categoria'].unique()
+    medicamentos = df['medicamento'].unique()
+
+    for categoria in categorias:
+        for medicamento in medicamentos:
+            # Filtrar datos por medicamento y categoría
+            datos_filtrados = df[(df['medicamento'] == medicamento) & (df['categoria'] == categoria)]
+            if not datos_filtrados.empty:
+                fig.add_trace(go.Scatter(
+                    x=datos_filtrados['fecha'],
+                    y=datos_filtrados['cantidad'],
+                    mode='lines+markers',
+                    name=f"{medicamento} ({categoria})",  # Mostrar medicamento y categoría en la leyenda
+                    visible=False,  # Inicialmente ocultos
+                ))
+
+    # Activar solo los medicamentos iniciales de la primera categoría como visibles
+    for i, trace in enumerate(fig.data):
+        if categorias[0] in trace.name:
+            fig.data[i].visible = True
+
+    # Crear botones para las categorías
+    botones = []
+    for categoria in categorias:
+        # Configuración de visibilidad: mostrar solo medicamentos de la categoría seleccionada
+        visibilidad = [categoria in trace.name for trace in fig.data]
+
+        botones.append(dict(
+            label=categoria,
+            method="update",
+            args=[{"visible": visibilidad}, {"title": f"Categoría: {categoria}"}],
+        ))
+
+    # Añadir menú de botones
     fig.update_layout(
+        updatemenus=[
+            dict(
+                active=0,
+                buttons=botones,
+                direction="down",
+                showactive=True,
+                x=0.5,
+                xanchor="center",
+                y=1.2,
+                yanchor="top"
+            )
+        ]
+    )
+
+    # Configuración del diseño
+    fig.update_layout(
+        title=" ",
         xaxis_title="Fecha",
         yaxis_title="Cantidad Vendida",
         legend_title="Medicamento",
         template="plotly_white"
     )
+
     return fig.to_html(full_html=False)
 
 # Actualizamos la vista para incluir el gráfico interactivo
+@login_required
 def dashboard_view_ventas(request):
     # Obtener datos de ventas históricos (aquí debes integrar tu propio código si es necesario)
     df_ventas = obtener_datos_ventas()
@@ -353,13 +412,16 @@ def dashboard_view_ventas(request):
 
     # Obtener el gráfico de predicciones de ventas
     grafico_predicciones_html = obtener_grafico_predicciones()
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     # Pasar los datos y gráficos al contexto
     contexto = {
         'df_ventas': df_ventas.to_dict(orient='records'),  # Datos históricos de ventas
         'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
         'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
-        'grafico_predicciones_html': grafico_predicciones_html  # Gráfico de predicciones
+        'grafico_predicciones_html': grafico_predicciones_html,  # Gráfico de predicciones
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
+        
     }
 
     return render(request, 'dashboard_ventas.html', contexto)
@@ -419,48 +481,7 @@ def obtener_medicamentos_proximos_a_vencer():
         })
     return proximos_a_vencer
 
-def obtener_medicamentos_proximos_a_vencer_firebase():
-    fecha_actual = now().date()
-    fecha_limite = fecha_actual + timedelta(days=30)
 
-    lotes_vencer = LoteMedicamento.objects.filter(
-        fecha_vencimiento__gt=fecha_actual,
-        fecha_vencimiento__lte=fecha_limite,
-        activo=True
-    )
-
-    proximos_a_vencer = []
-    for lote in lotes_vencer:
-        proximos_a_vencer.append({
-            'medicamento': lote.medicamento.nombre,
-            'cantidad': lote.cantidad,
-            'fecha_vencimiento': lote.fecha_vencimiento.isoformat()  # Convertir a formato ISO (cadena)
-        })
-    return proximos_a_vencer
-
-def enviar_medicamentos_a_firestore():
-    datos = obtener_medicamentos_proximos_a_vencer_firebase()
-
-    db = firestore.client()
-    doc_ref = db.collection("medicamentos_vencer").document("lista")
-
-    try:
-        doc_ref.set({"medicamentos": datos})
-        print("Datos subidos a Firestore con éxito")
-    except Exception as e:
-        print("Error al subir datos a Firestore:", e)
-
-    # Verifica si los datos se subieron correctamente
-    doc = doc_ref.get()
-    if doc.exists:
-        print("Documento Firestore:", doc.to_dict())
-    else:
-        print("Documento no encontrado en Firestore")
-
-
-
-# Llamar a la función para enviar los medicamentos
-enviar_medicamentos_a_firestore()
 
 def obtener_alertas_stock_minimo(umbral=10):
     medicamentos_bajo_stock = Medicamentos.objects.filter(stock__lte=umbral, activo=True)
@@ -502,6 +523,7 @@ def generar_grafico_barras_stock_minimo(alertas_stock_minimo):
     fig.update_layout(template='plotly_white', showlegend=True)
     return fig.to_html(full_html=False)
 
+@login_required
 def dashboard_view_inventario(request):
     # Obtener los medicamentos con baja rotación
     medicamentos_baja_rotacion = obtener_medicamentos_baja_rotacion()
@@ -522,6 +544,7 @@ def dashboard_view_inventario(request):
 
     # Generar gráfico de barras para stock mínimo
     grafico_stock_minimo_html = generar_grafico_barras_stock_minimo(alertas_stock_minimo)
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     # Pasar los datos al contexto para la plantilla
     contexto = {
@@ -530,6 +553,7 @@ def dashboard_view_inventario(request):
         'medicamentos_proximos_a_vencer': medicamentos_proximos_a_vencer,
         'alertas_stock_minimo': alertas_stock_minimo,
         'grafico_stock_minimo_html': grafico_stock_minimo_html,
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     }
     return render(request, 'dashboard_inventario.html', contexto)
 
@@ -615,6 +639,7 @@ def grafico_medicamentos_mas_comprados(medicamentos, por='cantidad'):
     return fig.to_html(full_html=False)
 
 # Vista del dashboard de los proveedores
+@login_required
 def dashboard_view_proveedores(request):
     # Cargar datos
     compras_df = cargar_datos_compras()
@@ -629,12 +654,14 @@ def dashboard_view_proveedores(request):
     grafico_proveedores_html = grafico_proveedor_frecuente(proveedor_frecuente)
     grafico_medicamentos_cantidad_html = grafico_medicamentos_mas_comprados(medicamentos_por_cantidad, por='cantidad')
     grafico_medicamentos_costo_html = grafico_medicamentos_mas_comprados(medicamentos_por_costo, por='costo')
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     # Contexto para el template
     contexto = {
         'grafico_proveedores_html': grafico_proveedores_html,
         'grafico_medicamentos_cantidad_html': grafico_medicamentos_cantidad_html,
         'grafico_medicamentos_costo_html': grafico_medicamentos_costo_html,
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     }
 
     return render(request, 'dashboard_proveedores.html', contexto)
@@ -679,6 +706,8 @@ def grafico_contribucion_ingresos(contribucion):
     fig.update_traces(textinfo='percent+label')
     fig.update_layout(template='plotly_white')
     return fig.to_html(full_html=False)
+
+@login_required
 def dashboard_view_usuarios(request):
     # Cargar datos
     ventas_df = cargar_datos_ventas()
@@ -691,10 +720,13 @@ def dashboard_view_usuarios(request):
     grafico_frecuencia_html = grafico_frecuencia_ventas(frecuencia_ventas)
     grafico_contribucion_html = grafico_contribucion_ingresos(contribucion_ingresos)
 
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
+
     # Contexto para el template
     contexto = {
         'grafico_frecuencia_html': grafico_frecuencia_html,
         'grafico_contribucion_html': grafico_contribucion_html,
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     }
 
     return render(request, 'dashboard_usuarios.html', contexto)
@@ -723,6 +755,7 @@ def login_view(request):
 def create_venta_view(request):
     # Obtener el término de búsqueda desde el GET request
     query = request.GET.get('q', '').strip()
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     # Filtrar medicamentos activos y, si hay una búsqueda, aplicar filtro adicional
     medicamentos = Medicamentos.objects.filter(activo=True)
@@ -819,7 +852,8 @@ def create_venta_view(request):
         'medicamentos': medicamentos_paginados,
         'productos_carrito': productos_carrito,
         'total_carrito': total_carrito,
-        'query': query
+        'query': query,
+        'grupos': grupos_usuario
     })
 
 
@@ -897,6 +931,7 @@ def remove_from_cart(request, medicamento_id):
     return redirect('CreateVenta')
 
 
+@login_required
 def ventas_view(request):
     query = request.GET.get('q', '')  # Capturar el término de búsqueda
     ventas_query = Ventas.objects.all()
@@ -910,9 +945,13 @@ def ventas_view(request):
     page_number = request.GET.get('page', 1)
     ventas = paginator.get_page(page_number)
 
+    # Obtener los grupos del usuario actual
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
+
     return render(request, 'ventas.html', {
         'ventas': ventas,
-        'query': query  # Pasar el término de búsqueda para mantenerlo en el formulario
+        'query': query,  # Pasar el término de búsqueda para mantenerlo en el formulario
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     })
 
 def detalle_venta(request, id):
@@ -1068,6 +1107,7 @@ def remove_from_cart_compra(request, medicamento_id):
     messages.success(request, "Medicamento eliminado del carrito.")
     return redirect('CreateCompra')
 
+@login_required
 # Vista para mostrar las compras registradas
 def compras_view(request):
     query = request.GET.get('q', '')  # Capturar el término de búsqueda
@@ -1082,9 +1122,12 @@ def compras_view(request):
     page_number = request.GET.get('page', 1)
     compras = paginator.get_page(page_number)
 
+    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
+
     return render(request, 'compras.html', {
         'compras': compras,
-        'query': query  # Pasar el término de búsqueda para mantenerlo en el formulario
+        'query': query,  # Pasar el término de búsqueda para mantenerlo en el formulario
+        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     })
 
 # Vista para mostrar el detalle de las compras
@@ -1092,3 +1135,25 @@ def detalle_compra_view(request, compra_id):
     compra = get_object_or_404(Compras, id=compra_id)
     detalles = DetalleCompra.objects.filter(compra=compra)
     return render(request, 'comprasCRUD/form_compra.html', {'compra': compra, 'detalles': detalles})
+
+def export_compras_to_excel(request):
+    # Crear un libro de trabajo Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Compras"
+    
+    # Agregar encabezados de las columnas
+    ws.append(['ID Compra', 'Proveedor', 'Fecha', 'Total (Bs)'])
+
+    # Obtener las compras desde la base de datos
+    compras = Compras.objects.all()  # Aquí estamos usando el modelo Compras
+
+    # Agregar los datos de las compras a la hoja de cálculo
+    for compra in compras:
+        ws.append([compra.id, compra.proveedor.nombre_empresa, compra.fecha_compra, compra.precio_total])
+
+    # Crear una respuesta HTTP con el archivo Excel
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=compras.xlsx'  # Nombre del archivo descargado
+    wb.save(response)
+    return response

@@ -58,11 +58,15 @@
                 <a class="page-link" href="?q={{ query }}&page={{ ventas.previous_page_number }}">Anterior</a>
             </li>
             {% endif %}
+
             {% for num in ventas.paginator.page_range %}
-            <li class="page-item {% if ventas.number == num %}active{% endif %}">
-                <a class="page-link" href="?q={{ query }}&page={{ num }}">{{ num }}</a>
-            </li>
+                {% if num > ventas.number|add:-6 and num < ventas.number|add:6 %}
+                <li class="page-item {% if ventas.number == num %}active{% endif %}">
+                    <a class="page-link" href="?q={{ query }}&page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
             {% endfor %}
+
             {% if ventas.has_next %}
             <li class="page-item">
                 <a class="page-link" href="?q={{ query }}&page={{ ventas.next_page_number }}">Siguiente</a>
@@ -70,5 +74,6 @@
             {% endif %}
         </ul>
     </nav>
+
 </div>
 {% endblock %}

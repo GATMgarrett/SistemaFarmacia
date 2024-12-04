@@ -11,6 +11,7 @@ print("Datos de compras y ventas eliminados.")
 
 
 #//////////////////////////////////////////////////////////////////////////////////////////
+"""
 import matplotlib.pyplot as plt
 import pandas as pd
 from ventas.models import DetalleVenta, Ventas
@@ -49,3 +50,4 @@ plt.legend(title='Medicamentos')
 # Mostrar el gráfico
 plt.tight_layout()
 plt.show()
+"""

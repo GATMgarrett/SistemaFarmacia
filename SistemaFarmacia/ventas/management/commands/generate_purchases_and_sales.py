@@ -1,4 +1,3 @@
-# ventas/management/commands/generate_purchases_and_sales.py
 from django.core.management.base import BaseCommand
 import random
 from datetime import timedelta, date
@@ -10,14 +9,14 @@ from ventas.models import (
 )
 
 class Command(BaseCommand):
-    help = 'Genera datos de compras y ventas para 2024'
+    help = 'Genera datos de compras y ventas para 2023-2024'
 
     def handle(self, *args, **kwargs):
         fake = Faker()
 
-        # Configuración: Rango para 2024
-        start_date_2024 = date(2024, 1, 1)
-        end_date_2024 = date(2024, 11, 19)
+        # Configuración: Rango desde julio 2023 hasta noviembre 2024
+        start_date = date(2023, 7, 1)
+        end_date = date(2024, 11, 20)
 
         # Función para simular ventas estacionales
         def ventas_estacionales(dia):
@@ -36,30 +35,30 @@ class Command(BaseCommand):
         # Medicamentos manualmente asignados
         medicamentos = [
             Medicamentos(id=1, nombre="ALCA", descripcion="Es", stock=47, laboratorio_id=1, activo=True, categoria_id=2, tipo_id=2),
-            Medicamentos(id=2, nombre="Acetazolamida", descripcion="Tratamiento del glaucoma, comprimidos de 250gr", stock=56, laboratorio_id=2, activo=True, categoria_id=3, tipo_id=13),
-            Medicamentos(id=3, nombre="DIOXIQUINA", descripcion="Analgésico usado para el alivio de dolores leves a...", stock=43, laboratorio_id=1, activo=True, categoria_id=2, tipo_id=1),
-            Medicamentos(id=4, nombre="ACETAMOL 1G", descripcion="Comprimido para fiebre y dolor leve, ideal para ad...", stock=0, laboratorio_id=2, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=5, nombre="DOLOFEN FORTE TAB CJA X 60 UND CIAL", descripcion="Alivia dolores fuertes, formulado para dolencias m...", stock=0, laboratorio_id=5, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=6, nombre="PARACETAMOL LCH. 500MG", descripcion="Analgésico común para fiebre y dolores leves, de r...", stock=5, laboratorio_id=7, activo=True, categoria_id=2, tipo_id=1),
-            Medicamentos(id=7, nombre="PIREDOL 500MG", descripcion="Alternativa económica para el manejo de fiebre y d...", stock=0, laboratorio_id=6, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=8, nombre="PARACETAMOL 500MG", descripcion="Comprimido ampliamente usado para reducir fiebre y...", stock=0, laboratorio_id=11, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=9, nombre="PARACETAMOL 125MG/5ML", descripcion="Jarabe pediátrico para fiebre y dolores menores en...", stock=0, laboratorio_id=8, activo=False, categoria_id=3, tipo_id=1),
-            Medicamentos(id=10, nombre="Z-MOL 1G", descripcion="Tableta potente para el manejo de dolores moderado...", stock=0, laboratorio_id=12, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=11, nombre="TRAMAGESIC 100MG", descripcion="Analgésico para el tratamiento de dolor intenso o ...", stock=0, laboratorio_id=14, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=12, nombre="PARACETAMOL 120MG/5ML", descripcion="Jarabe para aliviar dolores leves y fiebre en niño...", stock=0, laboratorio_id=15, activo=False, categoria_id=3, tipo_id=1),
-            Medicamentos(id=13, nombre="TAILGIN", descripcion="Tableta analgésica rápida para dolores de cabeza o...", stock=0, laboratorio_id=16, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=14, nombre="NODOLEX", descripcion="Medicamento básico para dolores comunes y fiebre l...", stock=0, laboratorio_id=17, activo=False, categoria_id=2, tipo_id=1),
-            Medicamentos(id=15, nombre="AZITROALCOS + COMPRIMIDOS", descripcion="Antibiótico para infecciones respiratorias y urina...", stock=0, laboratorio_id=18, activo=False, categoria_id=1, tipo_id=1),
-            Medicamentos(id=16, nombre="SULFATRIM", descripcion="Usado para tratar infecciones bacterianas comunes.", stock=0, laboratorio_id=19, activo=False, categoria_id=1, tipo_id=1),
-            Medicamentos(id=17, nombre="MACROZIT", descripcion="Antibiótico de amplio espectro, efectivo contra di...", stock=0, laboratorio_id=4, activo=False, categoria_id=1, tipo_id=1),
-            Medicamentos(id=18, nombre="CEFABIOCT", descripcion="Cefalosporina para infecciones severas, incluidas ...", stock=0, laboratorio_id=20, activo=False, categoria_id=1, tipo_id=1),
-            Medicamentos(id=19, nombre="TRIAFLEX 400MG", descripcion="Antibiótico para infecciones severas y recurrentes...", stock=0, laboratorio_id=21, activo=False, categoria_id=1, tipo_id=1),
-            Medicamentos(id=20, nombre="MEROPENEM 500MG DUTRICÉ", descripcion="Antibiótico de uso hospitalario para infecciones g...", stock=0, laboratorio_id=22, activo=False, categoria_id=1, tipo_id=1),
-            Medicamentos(id=21, nombre="AMBROXOL CLORHIDRATO", descripcion="Expectorante usado para aliviar tos y facilitar la...", stock=0, laboratorio_id=1, activo=True, categoria_id=12, tipo_id=3),
-            Medicamentos(id=22, nombre="FLUIDIMUC", descripcion="Ayuda a diluir la mucosidad para aliviar la conges...", stock=0, laboratorio_id=2, activo=True, categoria_id=12, tipo_id=3),
-            Medicamentos(id=23, nombre="ACETIL CISTEINA 300", descripcion="Expectorante eficaz en el tratamiento de enfermeda...", stock=0, laboratorio_id=5, activo=False, categoria_id=12, tipo_id=1),
-            Medicamentos(id=24, nombre="MUXOL", descripcion="Expectorante usado en el tratamiento de la tos sec...", stock=0, laboratorio_id=7, activo=False, categoria_id=12, tipo_id=3),
-            Medicamentos(id=25, nombre="PIRAXON FLU", descripcion="Expectorante que ayuda a aliviar los síntomas de l...", stock=0, laboratorio_id=6, activo=False, categoria_id=12, tipo_id=4)
+            Medicamentos(id=2, nombre="Acetazolamida", descripcion="Tratamiento del glaucoma, comprimidos de 250gr", stock=66, laboratorio_id=2, activo=True, categoria_id=3, tipo_id=13),
+            Medicamentos(id=3, nombre="DIOXIQUINA", descripcion="Analgésico usado para el alivio de dolores leves a moderados", stock=48, laboratorio_id=1, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=4, nombre="ACETAMOL 1G", descripcion="Comprimido para fiebre y dolor leve, ideal para adultos", stock=0, laboratorio_id=2, activo=True, categoria_id=1, tipo_id=1),
+            Medicamentos(id=5, nombre="DOLOFEN FORTE TAB CJA X 60 UND CIAL", descripcion="Alivia dolores fuertes, formulado para dolencias musculares", stock=0, laboratorio_id=5, activo=True, categoria_id=1, tipo_id=2),
+            Medicamentos(id=6, nombre="PARACETAMOL LCH. 500MG", descripcion="Analgésico común para fiebre y dolores leves, de rápido efecto", stock=5, laboratorio_id=7, activo=True, categoria_id=1, tipo_id=1),
+            Medicamentos(id=7, nombre="PIREDOL 500MG", descripcion="Alternativa económica para el manejo de fiebre y dolor", stock=0, laboratorio_id=6, activo=True, categoria_id=1, tipo_id=2),
+            Medicamentos(id=8, nombre="PARACETAMOL 500MG", descripcion="Comprimido ampliamente usado para reducir fiebre y aliviar dolor", stock=0, laboratorio_id=11, activo=True, categoria_id=1, tipo_id=1),
+            Medicamentos(id=9, nombre="PARACETAMOL 125MG/5ML", descripcion="Jarabe pediátrico para fiebre y dolores menores en niños", stock=0, laboratorio_id=8, activo=True, categoria_id=3, tipo_id=1),
+            Medicamentos(id=10, nombre="Z-MOL 1G", descripcion="Tableta potente para el manejo de dolores moderados y severos", stock=0, laboratorio_id=12, activo=True, categoria_id=1, tipo_id=1),
+            Medicamentos(id=11, nombre="TRAMAGESIC 100MG", descripcion="Analgésico para el tratamiento de dolor intenso o crónico", stock=0, laboratorio_id=14, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=12, nombre="PARACETAMOL 120MG/5ML", descripcion="Jarabe para aliviar dolores leves y fiebre en niños", stock=0, laboratorio_id=15, activo=True, categoria_id=3, tipo_id=1),
+            Medicamentos(id=13, nombre="TAILGIN", descripcion="Tableta analgésica rápida para dolores de cabeza o musculares", stock=0, laboratorio_id=16, activo=True, categoria_id=1, tipo_id=1),
+            Medicamentos(id=14, nombre="NODOLEX", descripcion="Medicamento básico para dolores comunes y fiebre leve", stock=0, laboratorio_id=17, activo=True, categoria_id=1, tipo_id=1),
+            Medicamentos(id=15, nombre="AZITROALCOS + COMPRIMIDOS", descripcion="Antibiótico para infecciones respiratorias y urinarias", stock=0, laboratorio_id=18, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=16, nombre="SULFATRIM", descripcion="Usado para tratar infecciones bacterianas comunes", stock=0, laboratorio_id=19, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=17, nombre="MACROZIT", descripcion="Antibiótico de amplio espectro, efectivo contra diversas infecciones", stock=0, laboratorio_id=4, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=18, nombre="CEFABIOCT", descripcion="Cefalosporina para infecciones severas, incluidas respiratorias", stock=0, laboratorio_id=20, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=19, nombre="TRIAFLEX 400MG", descripcion="Antibiótico para infecciones severas y recurrentes", stock=0, laboratorio_id=21, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=20, nombre="MEROPENEM 500MG DUTRICÉ", descripcion="Antibiótico de uso hospitalario para infecciones graves", stock=0, laboratorio_id=22, activo=True, categoria_id=2, tipo_id=1),
+            Medicamentos(id=21, nombre="AMBROXOL CLORHIDRATO", descripcion="Expectorante usado para aliviar tos y facilitar la respiración", stock=0, laboratorio_id=1, activo=True, categoria_id=12, tipo_id=3),
+            Medicamentos(id=22, nombre="FLUIDIMUC", descripcion="Ayuda a diluir la mucosidad para aliviar la congestión", stock=0, laboratorio_id=2, activo=True, categoria_id=12, tipo_id=3),
+            Medicamentos(id=23, nombre="ACETIL CISTEINA 300", descripcion="Expectorante eficaz en el tratamiento de enfermedades respiratorias", stock=0, laboratorio_id=5, activo=True, categoria_id=12, tipo_id=3),
+            Medicamentos(id=24, nombre="MUXOL", descripcion="Expectorante usado en el tratamiento de la tos seca", stock=0, laboratorio_id=7, activo=True, categoria_id=12, tipo_id=3),
+            Medicamentos(id=25, nombre="PIRAXON FLU", descripcion="Expectorante que ayuda a aliviar los síntomas de la gripe", stock=0, laboratorio_id=6, activo=True, categoria_id=12, tipo_id=4)
         ]
 
         # Proveedores y usuarios
@@ -70,11 +69,11 @@ class Command(BaseCommand):
         if not proveedores or not usuarios:
             print("Error: Se requieren proveedores y usuarios existentes en la base de datos.")
         else:
-            # Generar 30 compras para 2024
-            for _ in range(40):  # Ajustar el número de compras
+            # Generar compras distribuidas de manera creciente
+            total_compras = 50
+            fecha_compra = start_date
+            for i in range(total_compras):
                 proveedor = random.choice(proveedores)
-                fecha_compra = fake.date_between(start_date=start_date_2024, end_date=end_date_2024)
-
                 compra = Compras.objects.create(
                     proveedor=proveedor,
                     fecha_compra=fecha_compra,
@@ -82,9 +81,12 @@ class Command(BaseCommand):
                 )
 
                 precio_total = 0
+                medicamentos_comprados = 0
+                cantidad_a_comprar = (i + 1)  # Distribuir compras crecientes
+
                 for _ in range(random.randint(1, 5)):  # Entre 1 y 5 medicamentos por compra
                     medicamento = random.choice(medicamentos)
-                    cantidad = random.randint(10, 100)
+                    cantidad = min(medicamento.stock + cantidad_a_comprar, 100)  # No exceder el stock máximo
                     precio_compra = round(random.uniform(5, 50), 2)
 
                     # Crear detalle de compra
@@ -107,13 +109,17 @@ class Command(BaseCommand):
                     )
 
                     precio_total += cantidad * precio_compra
+                    medicamentos_comprados += 1
 
                 compra.precio_total = precio_total
                 compra.save()
 
-            # Generar ventas para 2024
-            current_date = start_date_2024
-            while current_date <= end_date_2024:
+                # Incrementar la fecha para la siguiente compra (distancia creciente)
+                fecha_compra += timedelta(days=random.randint(1, 15))  # Cambiar la lógica de fechas si es necesario
+
+            # Generar ventas solo después de las compras
+            current_date = start_date
+            while current_date <= end_date:
                 ventas_del_dia = ventas_estacionales(current_date)  # Ventas ajustadas a estaciones
                 ventas_del_dia = min(ventas_del_dia, 5)  # Limitar las ventas a 5 por día
                 for _ in range(ventas_del_dia):

@@ -1,115 +1,126 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 import plotly.express as px
-from ventas.models import DetalleVenta, Ventas
+import plotly.graph_objects as go
+from ventas.models import DetalleVenta
+from datetime import timedelta
 
-# Obtener los detalles de ventas y la información de la venta
-detalle_ventas = DetalleVenta.objects.all()
+def obtener_grafico_predicciones():
+    # Obtener los detalles de las ventas junto con la fecha de la venta
+    detalle_ventas = DetalleVenta.objects.all().select_related('venta', 'medicamento')
 
-# Verificar si hay datos en la base de datos
-if not detalle_ventas.exists():
-    def obtener_grafico_predicciones():
+    # Verificar si hay datos disponibles
+    if not detalle_ventas.exists():
         return "<h3>No hay datos disponibles para generar predicciones.</h3>"
-else:
-    # Crear un DataFrame con los datos obtenidos, incluyendo las fechas de venta
+
+    # Crear un DataFrame a partir de los detalles de ventas
     detalle_ventas_data = pd.DataFrame(list(detalle_ventas.values(
-        'venta__fecha_venta', 'cantidad', 'medicamento_id', 'medicamento__nombre'
+        'venta__fecha_venta', 'medicamento__nombre', 'cantidad', 'medicamento__categoria__nombre_categoria'
     )))
 
-    # Convertir las fechas a formato datetime
-    detalle_ventas_data['fecha_venta'] = pd.to_datetime(detalle_ventas_data['venta__fecha_venta'])
-    detalle_ventas_data['mes'] = detalle_ventas_data['fecha_venta'].dt.month
-    detalle_ventas_data['año'] = detalle_ventas_data['fecha_venta'].dt.year
+    # Convertir la fecha de venta a formato datetime
+    detalle_ventas_data['venta__fecha_venta'] = pd.to_datetime(detalle_ventas_data['venta__fecha_venta'])
 
-    # Agrupar por medicamento, año y mes
-    detalle_ventas_data_grouped = detalle_ventas_data.groupby(
-        ['medicamento_id', 'año', 'mes']
-    ).agg({'cantidad': 'sum'}).reset_index()
+    # Renombrar las columnas para mayor claridad
+    detalle_ventas_data.rename(columns={
+        'venta__fecha_venta': 'fecha_venta',
+        'medicamento__nombre': 'medicamento',
+        'cantidad': 'cantidad_vendida',
+        'medicamento__categoria__nombre_categoria': 'categoria'
+    }, inplace=True)
 
-    # Extraer variables para entrenamiento
-    X = detalle_ventas_data_grouped[['mes', 'año']].values
-    y = detalle_ventas_data_grouped['cantidad'].values
+    # Agrupar por mes, medicamento y categoría, sumando la cantidad de ventas
+    detalle_ventas_data['mes'] = detalle_ventas_data['fecha_venta'].dt.to_period('M')
+    ventas_mensuales = detalle_ventas_data.groupby(['mes', 'medicamento', 'categoria']).agg({'cantidad_vendida': 'sum'}).reset_index()
 
-    # Limpiar los datos (reemplazar NaN por 0)
-    X = np.nan_to_num(X)
+    # Convertir el período del mes a una fecha de inicio para graficar
+    ventas_mensuales['fecha_mes'] = ventas_mensuales['mes'].dt.to_timestamp()
 
-    # Verificar si hay desviación estándar cero y evitar división por cero
-    std_devs = np.std(X, axis=0)
-    if np.any(std_devs == 0):
-        print("Advertencia: La desviación estándar de alguna columna es cero.")
-        # Reemplazar la desviación estándar cero por 1 para evitar la división por cero
-        std_devs[std_devs == 0] = 1
-    
-    # Normalizar los datos
-    X_normalized = (X - np.mean(X, axis=0)) / std_devs
-    
-    # Asegurarse de que X_normalized no tenga NaN ni inf
-    X_normalized = np.nan_to_num(X_normalized)
+    # Crear figura inicial
+    fig = go.Figure()
 
-    # Añadir una columna de 1 para el término independiente (sesgo)
-    X_normalized = np.hstack([np.ones((X_normalized.shape[0], 1)), X_normalized])
+    # Obtener categorías y medicamentos únicos
+    categorias = ventas_mensuales['categoria'].unique()
+    medicamentos = ventas_mensuales['medicamento'].unique()
 
-    # Definir priors para la regresión lineal simple
-    alpha = np.random.normal(0, 10, 1000)
-    beta_mes = np.random.normal(0, 10, 1000)
-    beta_año = np.random.normal(0, 10, 1000)
+    for categoria in categorias:
+        for medicamento in medicamentos:
+            # Filtrar datos del medicamento y la categoría
+            datos_filtrados = ventas_mensuales[(ventas_mensuales['categoria'] == categoria) & (ventas_mensuales['medicamento'] == medicamento)]
+            if datos_filtrados.empty:
+                continue
 
-    # Modelo de predicción simple
-    mu = alpha[:, None] + beta_mes[:, None] * X_normalized[:, 1] + beta_año[:, None] * X_normalized[:, 2]
-    mu_mean = np.mean(mu, axis=0)
+            # Predicción
+            min_date = datos_filtrados['fecha_mes'].min()
+            datos_filtrados['meses'] = ((datos_filtrados['fecha_mes'].dt.year - min_date.year) * 12 + 
+                                        (datos_filtrados['fecha_mes'].dt.month - min_date.month))
 
-    # Obtener los nombres de los medicamentos
-    medicamentos = detalle_ventas_data[['medicamento_id', 'medicamento__nombre']].drop_duplicates()
-    medicamento_dict = dict(zip(medicamentos['medicamento_id'], medicamentos['medicamento__nombre']))
+            X = datos_filtrados['meses'].values
+            y = datos_filtrados['cantidad_vendida'].values
 
-    # Predicciones por medicamento
-    predicciones_por_medicamento = {}
-    for medicamento_id in medicamentos['medicamento_id']:
-        medicamento_data = detalle_ventas_data_grouped[detalle_ventas_data_grouped['medicamento_id'] == medicamento_id]
-        X_medicamento = medicamento_data[['mes', 'año']].values
-        # Normalizar para cada medicamento, evitando NaN e inf
-        X_medicamento_normalized = (X_medicamento - np.mean(X[:, 1:], axis=0)) / np.std(X[:, 1:], axis=0)
-        X_medicamento_normalized = np.nan_to_num(X_medicamento_normalized)
-        X_medicamento_normalized = np.hstack([np.ones((X_medicamento_normalized.shape[0], 1)), X_medicamento_normalized])
+            degree = 2
+            poly_coeffs = np.polyfit(X, y, degree)
+            poly_func = np.poly1d(poly_coeffs)
 
-        # Realizar la predicción
-        predicciones_medicamento = np.mean(alpha) + np.mean(beta_mes) * X_medicamento_normalized[:, 1] + np.mean(beta_año) * X_medicamento_normalized[:, 2]
-        predicciones_por_medicamento[medicamento_dict[medicamento_id]] = predicciones_medicamento
+            # Generar meses futuros
+            future_months = np.arange(X[-1] + 1, X[-1] + 7)  # Predicción para los próximos 6 meses
+            predictions = poly_func(future_months)
 
-    # Fechas futuras para las predicciones (predecir para los próximos 6 meses, por ejemplo)
-    future_dates = pd.date_range(start='2024-12-01', periods=6, freq='MS')
-    future_data = pd.DataFrame({'fecha_venta': future_dates})
-    future_data['mes'] = future_data['fecha_venta'].dt.month
-    future_data['año'] = future_data['fecha_venta'].dt.year
+            # Añadir ruido
+            noise = np.random.normal(loc=0, scale=0.5, size=len(predictions))
+            noisy_predictions = np.maximum(predictions + noise * predictions, 0)
 
-    # Normalizar fechas futuras
-    future_X = future_data[['mes', 'año']].values
-    future_X = (future_X - np.mean(X[:, 1:], axis=0)) / np.std(X[:, 1:], axis=0)
-    future_X = np.nan_to_num(future_X)  # Asegurarse de que no haya NaN
+            # Crear fechas futuras
+            future_dates = [min_date + pd.DateOffset(months=int(m)) for m in future_months]
 
-    future_X = np.hstack([np.ones((future_X.shape[0], 1)), future_X])
+            # Añadir la línea al gráfico
+            fig.add_trace(go.Scatter(
+                x=future_dates,
+                y=noisy_predictions,
+                mode='lines',
+                name=f'{medicamento} ({categoria}) - Predicción',
+                visible=False
+            ))
 
-    # Predicciones futuras por medicamento
-    future_predictions_por_medicamento = {}
-    for medicamento_id in medicamentos['medicamento_id']:
-        future_predictions = np.mean(alpha) + np.mean(beta_mes) * future_X[:, 1] + np.mean(beta_año) * future_X[:, 2]
-        future_predictions_por_medicamento[medicamento_dict[medicamento_id]] = future_predictions
+    # Activar solo las líneas de la primera categoría inicialmente
+    for i, trace in enumerate(fig.data):
+        if categorias[0] in trace.name:
+            fig.data[i].visible = True
 
-    # Generar gráfico de predicciones
-    fig = px.line(
-        future_data,
-        x='fecha_venta',
-        y=list(future_predictions_por_medicamento.values()),
-        labels={'value': 'Ventas Predichas', 'fecha_venta': 'Fecha'},
-        title="Predicción de Ventas Mensuales por Medicamento"
+    # Crear botones para categorías
+    botones = []
+    for categoria in categorias:
+        visibilidad = [categoria in trace.name for trace in fig.data]
+        botones.append(dict(
+            label=categoria,
+            method="update",
+            args=[{"visible": visibilidad}, {"title": f"Categoría: {categoria}"}]
+        ))
+
+    # Añadir menú de botones
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                active=0,
+                buttons=botones,
+                direction="down",
+                showactive=True,
+                x=0.5,
+                xanchor="center",
+                y=1.2,
+                yanchor="top"
+            )
+        ]
     )
 
-    # Actualizar diseño del gráfico
-    fig.update_layout(xaxis_title="Fecha", yaxis_title="Ventas Predichas")
+    # Configuración general del gráfico
+    fig.update_layout(
+        title="Predicciones (Mensuales)",
+        xaxis_title="Mes",
+        yaxis_title="Cantidad Vendida (Predicha)",
+        legend_title="Medicamentos",
+        template="plotly_white"
+    )
 
-    # Convertir gráfico a HTML
-    grafico_html = fig.to_html(full_html=False)
-
-    # Función para retornar el gráfico
-    def obtener_grafico_predicciones():
-        return grafico_html
+    # Retornar el gráfico en formato HTML
+    return fig.to_html(full_html=False)
