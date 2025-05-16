@@ -1,27 +1,43 @@
-<!--Con esta parte de codigo vamos a llamar a base html-->
 {% extends "base.html" %}
-
-<!--Esto es para que se cargen todas las librerias estaticas de la carpeta static como librerias de bootstrap y otros-->
 {% load static %}
 
-<!--En aqui vamos a crear un bloque para meter el resto del codigo-->
 {% block content %}
-<div>
-
+<div class="container">
     <br>
 
     <div class="card">
-        <div class="card-header">
-            Editar informacion del usuario
+        <div class="card-header bg-primary text-white">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-user-edit mr-2"></i>Editar Usuario: {{ form.instance.username }}
+            </h4>
         </div>
+        
         <div class="card-body">
-            <h4 class="card-title">Datos de usuario</h4>
-            <p class="card-text">Creo que esto es un texto secundarios</p>
-
-            {% include "usuariosCRUD/form_users.html" %}
-
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        {% include "usuariosCRUD/formUpdate_user.html" %}
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-2"></i>Guardar Cambios
+                    </button>
+                    <a href="{% url 'Usuarios' %}" class="btn btn-secondary">
+                        <i class="fas fa-times mr-2"></i>Cancelar
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
-
 </div>
+
+<script>
+// Script para manejar la contraseña en edición
+document.addEventListener('DOMContentLoaded', function() {
+    // Puedes agregar lógica específica para la edición aquí
+});
+</script>
 {% endblock %}

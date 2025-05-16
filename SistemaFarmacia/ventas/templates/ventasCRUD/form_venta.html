@@ -1,42 +1,92 @@
 <!-- ventasCRUD/form_venta.html -->
-<form enctype="multipart/form-data" method="post">
-    {% csrf_token %}
-    
-    {% for campo in venta_form %}
-    <div class="mb-3">
-      <label for="id_{{ campo.name }}" class="form-label">{{ campo.label }}:</label>
-      <input 
-        type="{{ campo.field.widget.input_type }}"
-        class="form-control" 
-        name="{{ campo.name }}" 
-        id="id_{{ campo.name }}"
-        aria-describedby="helpId_{{ campo.name }}" 
-        placeholder="{{ campo.label }}"
-        value="{{ campo.value|default_if_none:'' }}"
-      >
-      <div class="col-12 help-text">{{campo.errors}}</div>
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-file-invoice me-2"></i> Formulario de Venta</h5>
     </div>
-    {% endfor %}
+    <div class="card-body">
+        <form enctype="multipart/form-data" method="post">
+            {% csrf_token %}
+            
+            <div class="row mb-4">
+                <div class="col-md-12 mb-3">
+                    <h5 class="border-bottom pb-2"><i class="fas fa-shopping-cart me-2"></i> Datos de la Venta</h5>
+                </div>
+                {% for campo in venta_form %}
+                <div class="col-md-6 mb-3">
+                    <div class="form-group">
+                        <label for="id_{{ campo.name }}" class="form-label fw-bold">
+                            {{ campo.label }}:
+                            {% if campo.field.required %}
+                            <span class="text-danger">*</span>
+                            {% endif %}
+                        </label>
+                        <input 
+                            type="{{ campo.field.widget.input_type }}"
+                            class="form-control {% if campo.errors %}is-invalid{% endif %}" 
+                            name="{{ campo.name }}" 
+                            id="id_{{ campo.name }}"
+                            aria-describedby="helpId_{{ campo.name }}" 
+                            placeholder="{{ campo.label }}"
+                            value="{{ campo.value|default_if_none:'' }}"
+                        >
+                        {% if campo.errors %}
+                        <div class="invalid-feedback">
+                            {{ campo.errors }}
+                        </div>
+                        {% endif %}
+                        {% if campo.help_text %}
+                        <small id="helpId_{{ campo.name }}" class="form-text text-muted">{{ campo.help_text }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
 
-    <h3>Detalles de la Venta</h3>
-    {% for campo in detalle_venta_formset %}
-    <div class="mb-3">
-      <label for="id_{{ campo.name }}" class="form-label">{{ campo.label }}:</label>
-      <input 
-        type="{{ campo.field.widget.input_type }}"
-        class="form-control" 
-        name="{{ campo.name }}" 
-        id="id_{{ campo.name }}" 
-        aria-describedby="helpId_{{ campo.name }}" 
-        placeholder="{{ campo.label }}"
-        value="{{ campo.value|default_if_none:'' }}"
-      >
-      <div class="col-12 help-text">{{campo.errors}}</div>
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <h5 class="border-bottom pb-2"><i class="fas fa-list-ul me-2"></i> Detalles de la Venta</h5>
+                </div>
+                {% for campo in detalle_venta_formset %}
+                <div class="col-md-6 mb-3">
+                    <div class="form-group">
+                        <label for="id_{{ campo.name }}" class="form-label fw-bold">
+                            {{ campo.label }}:
+                            {% if campo.field.required %}
+                            <span class="text-danger">*</span>
+                            {% endif %}
+                        </label>
+                        <input 
+                            type="{{ campo.field.widget.input_type }}"
+                            class="form-control {% if campo.errors %}is-invalid{% endif %}" 
+                            name="{{ campo.name }}" 
+                            id="id_{{ campo.name }}" 
+                            aria-describedby="helpId_{{ campo.name }}" 
+                            placeholder="{{ campo.label }}"
+                            value="{{ campo.value|default_if_none:'' }}"
+                        >
+                        {% if campo.errors %}
+                        <div class="invalid-feedback">
+                            {{ campo.errors }}
+                        </div>
+                        {% endif %}
+                        {% if campo.help_text %}
+                        <small id="helpId_{{ campo.name }}" class="form-text text-muted">{{ campo.help_text }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <!-- Botón para cancelar la acción y regresar a la lista de ventas -->
+                <a class="btn btn-outline-secondary" href="{% url 'Ventas' %}">
+                    <i class="fas fa-arrow-left me-2"></i>Cancelar
+                </a>
+                <!-- Botón para confirmar el envío del formulario -->
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check-circle me-2"></i>Guardar Venta
+                </button>
+            </div>
+        </form>
     </div>
-    {% endfor %}
-
-    <!-- Botón para confirmar el envío del formulario -->
-    <input name="" id="" class="btn btn-success" type="submit" value="Enviar información">
-    <!-- Botón para cancelar la acción y regresar a la lista de ventas -->
-    <a name="" id="" class="btn btn-primary" href="{% url 'Ventas' %}" role="button">Cancelar</a>
-</form>
+</div>

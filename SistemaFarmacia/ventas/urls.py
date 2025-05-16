@@ -16,8 +16,10 @@ urlpatterns = [
     path('', views.ventas_view, name='Ventas'),
     path('venta/detalle/<int:id>/', views.detalle_venta, name='detalle_venta'),  # Nueva URL para el detalle de la venta
     path('venta/create/', views.create_venta_view, name='CreateVenta'),
-    path('venta/add_to_cart/<int:medicamento_id>/', views.add_to_cart, name='add_to_cart'),
-    path('remove_from_cart/<int:medicamento_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('venta/add_to_cart/<int:lote_id>/', views.add_to_cart, name='add_to_cart'),
+    path('remove_from_cart/<int:lote_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('venta/confirmar/', views.confirmar_venta, name='confirmar_venta'),
+    path('buscar-cliente/', views.buscar_cliente_view, name='buscar_cliente_view'),
 
     # urls for the compra
     path('compras/', views.compras_view, name='Compras'),
@@ -67,7 +69,13 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     #path('logout/', views.logout_view, name='logout'),
     
+    # Vista para la Facturación
+    path('facturas/', views.facturas_view, name='facturas'),
+    path('facturas/generar/<int:venta_id>/', views.generar_factura_view, name='generar_factura'),
+    path('facturas/detalle/<int:factura_id>/', views.detalle_factura_view, name='detalle_factura'),
+    path('facturas/imprimir/<int:factura_id>/', views.imprimir_factura_view, name='imprimir_factura'),
+    path('facturas/anular/<int:factura_id>/', views.anular_factura_view, name='anular_factura'),
     
-    
-
+    # Vista para buscar clientes por NIT/CI (AJAX)
+    #path('buscar-cliente/', views.buscar_cliente_view, name='buscar_cliente'),
 ]

@@ -25,15 +25,10 @@ import base64
 import pandas as pd
 
 from datetime import datetime, timedelta
-from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra, Categorias, User
+from .models import Laboratorios, Proveedores, Medicamentos, Ventas, DetalleVenta, LoteMedicamento, Compras, DetalleCompra, Categorias, User, Cliente, Factura
 from .forms import UsuarioForm, LaboratorioForm, ProveedorForm, MedicamentoForm, VentaForm, DetalleVentaForm
-from pgmpy.models import DynamicBayesianNetwork as DBN
-from pgmpy.estimators import MaximumLikelihoodEstimator
-from pgmpy.inference import DBNInference
+
 from openpyxl import Workbook
-
-from .analyticsnumpy import obtener_grafico_predicciones  # Importa la función que genera el gráfico
-
 
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
@@ -94,8 +89,8 @@ def create_laboratorio_view(request):
         laboratorio = formulario.save(commit=False)  # Guarda el formulario sin guardar en la base de datos aún
         laboratorio.activo = True  # Establece activo como True por defecto
         laboratorio.save()  # Ahora guarda en la base de datos
-        return redirect('ListaLaboratorios')  # Cambia esta URL según tu configuración
-    return render(request, 'laboratoriosCRUD/create_laboratorio.html', {'formulario': formulario}, {'grupos': grupos_usuario })
+        return redirect('Laboratorios')  # Cambia esta URL según tu configuración
+    return render(request, 'laboratoriosCRUD/create_laboratorio.html', {'formulario': formulario, 'grupos': grupos_usuario})
 # Vista para la edición de laboratorios
 @login_required
 def update_laboratorio_view(request, id):
@@ -158,12 +153,23 @@ def create_user_view(request):
 # Vista para la edición de los usuarios
 @login_required
 def update_user_view(request, id):
-    usuario = User.objects.get(id=id)
-    formulario = UsuarioForm(request.POST or None, request.FILES or None, instance=usuario)
-    if formulario.is_valid() and request.POST:
-        formulario.save()
-        return redirect('Usuarios')
-    return render(request, 'usuariosCRUD/update_user.html', {'formulario': formulario})
+    usuario = get_object_or_404(User, pk=id)
+    
+    if request.method == 'POST':
+        form = UsuarioForm(request.POST, instance=usuario)
+        if form.is_valid():
+            user = form.save()  # Usará el método save personalizado
+            messages.success(request, 'Usuario actualizado correctamente')
+            return redirect('Usuarios')
+    else:
+        form = UsuarioForm(instance=usuario)
+        # Limpiar el campo de contraseña en el GET
+        form.fields['password'].initial = ''
+    
+    return render(request, 'usuariosCRUD/update_user.html', {
+        'form': form,
+        'usuario': usuario
+    })
 
 # Vista para la eliminación de los usuarios
 def delete_user_view(request, id):
@@ -753,183 +759,159 @@ def login_view(request):
 @login_required
 @transaction.atomic
 def create_venta_view(request):
-    # Obtener el término de búsqueda desde el GET request
-    query = request.GET.get('q', '').strip()
-    grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
-
-    # Filtrar medicamentos activos y, si hay una búsqueda, aplicar filtro adicional
-    medicamentos = Medicamentos.objects.filter(activo=True)
+    # Obtener el término de búsqueda
+    query = request.GET.get('q', '')
+    
+    # Filtrar los lotes de medicamentos activos y con stock disponible
+    lotes_query = LoteMedicamento.objects.filter(
+        activo=True,
+        cantidad__gt=0,  # Solo lotes con stock disponible
+        medicamento__activo=True  # Solo medicamentos activos
+    ).select_related('medicamento', 'medicamento__laboratorio')
+    
+    # Aplicar filtro de búsqueda si existe
     if query:
-        medicamentos = medicamentos.filter(Q(nombre__icontains=query))
-
-    # Obtener el precio de venta de los lotes de cada medicamento
-    for medicamento in medicamentos:
-        lote = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True).first()
-        medicamento.precio_venta_lote = lote.precio_venta if lote else 0  # Asignar el precio del lote al medicamento
-
-    # Paginación: mostrar 5 medicamentos por página
-    paginator = Paginator(medicamentos, 5)  # 5 medicamentos por página
-    page_number = request.GET.get('page')
-    medicamentos_paginados = paginator.get_page(page_number)
-
-    # Obtener el carrito actual de la sesión
-    carrito = request.session.get('carrito', [])
-    productos_carrito = []
-    total_carrito = 0
-
-    # Procesar el carrito
-    for item in carrito:
-        if 'medicamento_id' not in item:
-            continue
-        medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
-        cantidad = item['cantidad']
-        
-        # Obtener el precio del lote para este medicamento
-        lote = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True).first()
-        if lote and lote.precio_venta is not None:
-            subtotal = lote.precio_venta * cantidad  # Usar el precio de venta del lote
-        else:
-            subtotal = 0  # O manejar el caso según sea necesario
-        productos_carrito.append({
-            'medicamento': medicamento,
-            'cantidad': cantidad,
-            'subtotal': subtotal
-        })
-        total_carrito += subtotal
-
-    # Chequear si hay suficiente stock en los lotes antes de procesar la venta
-    for item in carrito:
-        medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
-        cantidad_requerida = item['cantidad']
-        lotes = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True)
-        stock_total = sum(lote.cantidad for lote in lotes)
-
-        if stock_total < cantidad_requerida:
-            messages.error(request, f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {stock_total}")
-            return redirect('CreateVenta')
-
-    # Procesar la confirmación de venta
-    if request.method == 'POST' and carrito:
-        venta = Ventas.objects.create(
-            usuario=request.user,
-            fecha_venta=date.today(),
-            precio_total=total_carrito
+        lotes_query = lotes_query.filter(
+            Q(medicamento__nombre__icontains=query) |
+            Q(lote_fabricante__icontains=query)
         )
-
-        for item in carrito:
-            if 'medicamento_id' not in item:
-                continue
-            medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
-            cantidad = item['cantidad']
-            
-            # Obtener el precio del lote
-            lote = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True).first()
-            if lote and lote.precio_venta is not None:
-                precio_venta = lote.precio_venta  # Usamos el precio de venta del lote
-            else:
-                precio_venta = 0  # Usamos 0 si no se encuentra un precio válido en el lote
-
-            # Crear el DetalleVenta
-            detalle_venta = DetalleVenta.objects.create(
-                venta=venta,
-                medicamento=medicamento,
-                precio=precio_venta,  # Asignamos el precio de venta del lote
-                cantidad=cantidad
-            )
-            
-            # Procesar el stock con FIFO
+    
+    # Ordenar los lotes: primero por nombre de medicamento, luego por fecha de vencimiento (más próximos primero)
+    lotes_query = lotes_query.order_by('medicamento__nombre', 'fecha_vencimiento')
+    
+    # Paginación
+    paginator = Paginator(lotes_query, 10)  # 10 lotes por página
+    page_number = request.GET.get('page', 1)
+    lotes_medicamentos = paginator.get_page(page_number)
+    
+    # Obtener el carrito de la sesión
+    productos_carrito = request.session.get('carrito', [])
+    
+    # Limpiar el carrito para evitar problemas con el formato antiguo
+    nuevo_carrito = []
+    total_carrito = 0
+    
+    # Verificar si el carrito tiene el formato antiguo y convertirlo al nuevo formato
+    for item in productos_carrito:
+        # Verificar si es un elemento del formato antiguo (con medicamento_id en lugar de lote_id)
+        if 'medicamento_id' in item and 'lote_id' not in item:
+            # Intentar obtener el lote correspondiente
             try:
-                detalle_venta.procesar_fifo()  # Actualizar el stock de los lotes
-            except ValueError as e:
-                messages.error(request, str(e))
-                return redirect('CreateVenta')
-
-        request.session['carrito'] = []
-        messages.success(request, "La venta se ha registrado exitosamente.")
-        return redirect('Ventas')
-
-    return render(request, 'ventasCRUD/create_venta.html', {
-        'medicamentos': medicamentos_paginados,
-        'productos_carrito': productos_carrito,
+                medicamento = get_object_or_404(Medicamentos, id=item['medicamento_id'])
+                lote = LoteMedicamento.objects.filter(
+                    medicamento=medicamento, activo=True, cantidad__gt=0
+                ).order_by('fecha_vencimiento').first()
+                
+                if lote:
+                    # Crear un nuevo elemento con el formato correcto
+                    nuevo_item = {
+                        'lote_id': lote.id,
+                        'medicamento': {
+                            'id': medicamento.id,
+                            'nombre': medicamento.nombre
+                        },
+                        'precio_unitario': float(lote.precio_venta),
+                        'cantidad': item['cantidad'],
+                        'subtotal': float(lote.precio_venta) * item['cantidad']
+                    }
+                    nuevo_carrito.append(nuevo_item)
+                    total_carrito += nuevo_item['subtotal']
+            except:
+                # Si hay algún error, omitir este elemento
+                pass
+        elif 'lote_id' in item:
+            # Ya tiene el formato correcto, calcular el subtotal
+            if 'precio_unitario' not in item:
+                # Si falta precio_unitario, intentar recuperarlo
+                try:
+                    lote = get_object_or_404(LoteMedicamento, id=item['lote_id'])
+                    item['precio_unitario'] = float(lote.precio_venta)
+                except:
+                    # Si no se puede obtener, usar un valor por defecto
+                    item['precio_unitario'] = 0
+            
+            item['subtotal'] = item['cantidad'] * item['precio_unitario']
+            nuevo_carrito.append(item)
+            total_carrito += item['subtotal']
+    
+    # Guardar el carrito convertido
+    request.session['carrito'] = nuevo_carrito
+    
+    # Pasar la fecha actual al contexto para comparaciones de vencimiento
+    fecha_actual = datetime.now()
+    
+    context = {
+        'lotes_medicamentos': lotes_medicamentos,
+        'productos_carrito': nuevo_carrito,
         'total_carrito': total_carrito,
         'query': query,
-        'grupos': grupos_usuario
-    })
-
-
-@require_POST
-def add_to_cart(request, medicamento_id):
-    # Obtener el carrito de la sesión o inicializarlo como una lista vacía
-    carrito = request.session.get('carrito', [])
-
-    # Obtener el valor de cantidad desde el formulario
-    cantidad_str = request.POST.get('cantidad', '').strip()
-
-    # Validar si el campo de cantidad está vacío
-    if not cantidad_str:
-        messages.error(request, "El campo de cantidad está vacío. Por favor, ingrese una cantidad.")
-        return redirect('CreateVenta')
-
-    try:
-        # Convertir cantidad a entero
-        cantidad = int(cantidad_str)
-        if cantidad < 1:
-            raise ValueError("La cantidad debe ser al menos 1.")
-    except ValueError:
-        messages.error(request, "Por favor, ingrese una cantidad válida.")
-        return redirect('CreateVenta')
-
-    # Obtener el medicamento
-    medicamento = get_object_or_404(Medicamentos, id=medicamento_id)
-
-    # Verificar el stock disponible en todos los lotes activos
-    lotes = LoteMedicamento.objects.filter(medicamento=medicamento, activo=True)
-    stock_total = sum(lote.cantidad for lote in lotes)
-
-    if cantidad > stock_total:
-        # Si la cantidad solicitada excede el stock total, mostrar un mensaje de error y redirigir
-        messages.error(request, f"No hay suficiente stock para {medicamento.nombre}. Stock disponible: {stock_total}")
-        return redirect('CreateVenta')
-
-    # Verificar si el medicamento ya está en el carrito
-    for item in carrito:
-        if item.get('medicamento_id') == medicamento_id:
-            # Si ya está en el carrito, verificar que la suma de cantidades no exceda el stock total
-            nueva_cantidad = item['cantidad'] + cantidad
-            if nueva_cantidad > stock_total:
-                # Si la cantidad total en el carrito excede el stock disponible, no agregar y redirigir
-                messages.error(request, f"No puedes agregar más de {stock_total} unidades de {medicamento.nombre}.")
-                return redirect('CreateVenta')
-            item['cantidad'] = nueva_cantidad  # Actualiza la cantidad si no excede el stock total
-            break
-    else:
-        # Si no está en el carrito, agregarlo como un nuevo producto
-        carrito.append({'medicamento_id': medicamento_id, 'cantidad': cantidad})
-
-    # Guardar el carrito actualizado en la sesión
-    request.session['carrito'] = carrito
-    request.session.modified = True  # Fuerza la actualización de la sesión
-
-    # Redirige con un mensaje de éxito (opcional)
-    # messages.success(request, "Producto agregado al carrito.")
-    return redirect('CreateVenta')
-
-def remove_from_cart(request, medicamento_id):
-    # Obtén el carrito de la sesión
-    carrito = request.session.get('carrito', [])
-    print("Carrito antes de eliminar:", carrito)  # Depuración
-
-    # Filtra el carrito para eliminar el medicamento de manera segura
-    carrito = [item for item in carrito if item.get('medicamento_id') != medicamento_id]
+        'now': fecha_actual,
+    }
     
-    # Actualiza el carrito en la sesión
-    request.session['carrito'] = carrito
-    request.session.modified = True
+    return render(request, 'ventasCRUD/create_venta.html', context)
 
-    print("Carrito después de eliminar:", request.session.get('carrito', {}))  # Depuración
-    #messages.success(request, "Producto eliminado del carrito.")
+# Agregar al carrito
+@login_required
+def add_to_cart(request, lote_id):
+    if request.method == 'POST':
+        lote = get_object_or_404(LoteMedicamento, id=lote_id, activo=True)
+        
+        # Verificar que haya stock disponible
+        cantidad_solicitada = int(request.POST.get('cantidad', 1))
+        if cantidad_solicitada > lote.cantidad:
+            messages.error(request, f"No hay suficiente stock disponible. Stock actual: {lote.cantidad}")
+            return redirect('CreateVenta')
+        
+        # Obtener carrito actual
+        carrito = request.session.get('carrito', [])
+        
+        # Verificar si el lote ya está en el carrito
+        item_exists = False
+        for item in carrito:
+            if item['lote_id'] == lote_id:
+                # Actualizar cantidad si ya existe
+                nueva_cantidad = item['cantidad'] + cantidad_solicitada
+                if nueva_cantidad > lote.cantidad:
+                    messages.error(request, f"No hay suficiente stock disponible. Stock actual: {lote.cantidad}")
+                    return redirect('CreateVenta')
+                item['cantidad'] = nueva_cantidad
+                item_exists = True
+                break
+        
+        # Si no existe, agregar nuevo item al carrito
+        if not item_exists:
+            carrito.append({
+                'lote_id': lote_id,
+                'medicamento': {
+                    'id': lote.medicamento.id,
+                    'nombre': lote.medicamento.nombre
+                },
+                'precio_unitario': float(lote.precio_venta),
+                'cantidad': cantidad_solicitada,
+                'subtotal': float(lote.precio_venta) * cantidad_solicitada
+            })
+        
+        # Guardar carrito actualizado en la sesión
+        request.session['carrito'] = carrito
+        messages.success(request, f"Se agregó {lote.medicamento.nombre} (Lote: {lote.lote_fabricante}) al carrito.")
+    
     return redirect('CreateVenta')
 
+# Quitar del carrito
+@login_required
+def remove_from_cart(request, lote_id):
+    carrito = request.session.get('carrito', [])
+    
+    # Buscar y eliminar el item del lote específico
+    for i, item in enumerate(carrito):
+        if item['lote_id'] == lote_id:
+            del carrito[i]
+            break
+    
+    # Guardar carrito actualizado
+    request.session['carrito'] = carrito
+    
+    return redirect('CreateVenta')
 
 @login_required
 def ventas_view(request):
@@ -986,6 +968,7 @@ def create_compra_view(request):
             precio_venta = item['precio_venta']
             fecha_vencimiento = datetime.strptime(item['fecha_vencimiento'], '%Y-%m-%d').date()
             fecha_produccion = datetime.strptime(item['fecha_produccion'], '%Y-%m-%d').date()
+            lote_fabricante = item['lote_fabricante']
 
             DetalleCompra.objects.create(
                 compra=compra,
@@ -1002,6 +985,7 @@ def create_compra_view(request):
                 fecha_compra=compra.fecha_compra,
                 fecha_vencimiento=fecha_vencimiento,
                 fecha_produccion=fecha_produccion,
+                lote_fabricante=lote_fabricante,
                 activo=True
             )
 
@@ -1053,6 +1037,7 @@ def add_to_cart_compra(request, medicamento_id):
     fecha_produccion = request.POST.get('fecha_produccion')
     precio_compra = float(request.POST.get('precio_compra'))
     precio_venta = float(request.POST.get('precio_venta'))
+    lote_fabricante = request.POST.get('lote_fabricante', '').strip()
 
     # Validar datos
     if cantidad <= 0 or precio_compra <= 0 or precio_venta <= 0:
@@ -1067,12 +1052,13 @@ def add_to_cart_compra(request, medicamento_id):
         messages.error(request, "Fechas inválidas.")
         return redirect('CreateCompra')
 
-    # Buscar si el medicamento ya está en el carrito con las mismas fechas
+    # Buscar si el medicamento ya está en el carrito con las mismas fechas y lote de fabricante
     for item in carrito_compra:
         if (
             item['medicamento_id'] == medicamento_id and
             item['fecha_vencimiento'] == str(fecha_vencimiento) and
-            item['fecha_produccion'] == str(fecha_produccion)
+            item['fecha_produccion'] == str(fecha_produccion) and
+            item['lote_fabricante'] == lote_fabricante
         ):
             item['cantidad'] += cantidad
             break
@@ -1086,6 +1072,7 @@ def add_to_cart_compra(request, medicamento_id):
             'precio_venta': precio_venta,
             'fecha_vencimiento': str(fecha_vencimiento),
             'fecha_produccion': str(fecha_produccion),
+            'lote_fabricante': lote_fabricante,
         })
 
     # Guardar el carrito actualizado en la sesión
@@ -1157,3 +1144,262 @@ def export_compras_to_excel(request):
     response['Content-Disposition'] = 'attachment; filename=compras.xlsx'  # Nombre del archivo descargado
     wb.save(response)
     return response
+
+# Módulo de Facturación
+
+# Vista para listar las facturas
+@login_required
+def facturas_view(request):
+    query = request.GET.get('q', '')  # Capturar el término de búsqueda
+    facturas_query = Factura.objects.select_related('cliente', 'venta').filter(activo=True)
+
+    # Filtrar por cliente o número de factura
+    if query:
+        facturas_query = facturas_query.filter(
+            Q(cliente__nombre__icontains=query) | 
+            Q(cliente__nit_ci__icontains=query) |
+            Q(numero_factura__icontains=query)
+        )
+
+    # Paginación
+    paginator = Paginator(facturas_query, 10)  # 10 facturas por página
+    page_number = request.GET.get('page', 1)
+    facturas = paginator.get_page(page_number)
+
+    grupos_usuario = request.user.groups.values_list('name', flat=True)
+
+    return render(request, 'facturacion/facturas.html', {
+        'facturas': facturas,
+        'query': query,
+        'grupos': grupos_usuario
+    })
+
+# Vista para generar una factura a partir de una venta
+@login_required
+def generar_factura_view(request, venta_id):
+    venta = get_object_or_404(Ventas, id=venta_id)
+    
+    # Verificar si ya existe una factura para esta venta
+    factura_existente = Factura.objects.filter(venta=venta).first()
+    if factura_existente:
+        messages.warning(request, f"Ya existe una factura para esta venta (Factura #{factura_existente.numero_factura}).")
+        return redirect('detalle_factura', factura_id=factura_existente.id)
+    
+    if request.method == 'POST':
+        # Crear o buscar cliente
+        nombre_cliente = request.POST.get('nombre')
+        nit_ci = request.POST.get('nit_ci')
+        telefono = request.POST.get('telefono', '')
+        
+        # Buscar si ya existe el cliente con ese NIT/CI
+        cliente, created = Cliente.objects.get_or_create(
+            nit_ci=nit_ci,
+            defaults={
+                'nombre': nombre_cliente,
+                'telefono': telefono,
+                'activo': True
+            }
+        )
+        
+        # Si el cliente existe pero algunos datos son diferentes, actualizarlos
+        if not created:
+            cliente.nombre = nombre_cliente  # Actualizar nombre si cambió
+            if telefono:
+                cliente.telefono = telefono  # Actualizar teléfono si se proporcionó
+            cliente.save()
+            
+        # Generar la factura
+        # Calcular fecha límite de emisión (60 días después)
+        fecha_limite = datetime.now().date() + timedelta(days=60)
+        
+        # Crear la factura
+        factura = Factura(
+            venta=venta,
+            cliente=cliente,
+            monto_total=venta.precio_total,
+            fecha_limite_emision=fecha_limite
+        )
+        factura.save()  # Esto generará automáticamente el número de factura
+        
+        messages.success(request, f"Factura #{factura.numero_factura} generada exitosamente.")
+        return redirect('detalle_factura', factura_id=factura.id)
+        
+    return render(request, 'facturacion/generar_factura.html', {
+        'venta': venta,
+        'detalles': DetalleVenta.objects.filter(venta=venta, activo=True)
+    })
+
+# Vista para ver el detalle de una factura
+@login_required
+def detalle_factura_view(request, factura_id):
+    factura = get_object_or_404(Factura, id=factura_id)
+    detalles_venta = DetalleVenta.objects.filter(venta=factura.venta, activo=True)
+    
+    return render(request, 'facturacion/detalle_factura.html', {
+        'factura': factura,
+        'detalles': detalles_venta,
+    })
+
+# Vista para imprimir una factura en PDF
+@login_required
+def imprimir_factura_view(request, factura_id):
+    factura = get_object_or_404(Factura, id=factura_id)
+    detalles_venta = DetalleVenta.objects.filter(venta=factura.venta, activo=True)
+    
+    # Configuración para la impresión (formato PDF)
+    context = {
+        'factura': factura,
+        'detalles': detalles_venta,
+        'fecha_actual': timezone.now(),
+        'nombre_empresa': 'FARMACIA SALUD TOTAL',
+        'direccion_empresa': 'Av. Principal #123, Ciudad',
+        'telefono_empresa': '(591) 3-XXXXXXX',
+    }
+    
+    return render(request, 'facturacion/imprimir_factura.html', context)
+
+# Vista para anular una factura
+@login_required
+def anular_factura_view(request, factura_id):
+    factura = get_object_or_404(Factura, id=factura_id)
+    
+    if request.method == 'POST':
+        # Anular la factura (desactivarla)
+        factura.activo = False
+        factura.save()
+        messages.success(request, f"Factura #{factura.numero_factura} anulada exitosamente.")
+        return redirect('facturas')
+    
+    return render(request, 'facturacion/anular_factura.html', {'factura': factura})
+
+@login_required
+def buscar_cliente_view(request):
+    """
+    Vista para buscar un cliente por NIT/CI y devolver sus datos en formato JSON.
+    Utilizada para autocompletar los campos del cliente en la creación de ventas.
+    """
+    nit_ci = request.GET.get('nit_ci', '').strip()
+    response_data = {
+        'encontrado': False,
+        'cliente': None
+    }
+    
+    if nit_ci:
+        try:
+            cliente = Cliente.objects.get(nit_ci=nit_ci, activo=True)
+            response_data['encontrado'] = True
+            response_data['cliente'] = {
+                'id': cliente.id,
+                'nombre': cliente.nombre,
+                'telefono': cliente.telefono or ''
+            }
+        except Cliente.DoesNotExist:
+            # El cliente no existe, se devuelve encontrado=False
+            pass
+    
+    return JsonResponse(response_data)
+
+# Función para procesar la confirmación de venta
+@login_required
+@transaction.atomic
+def confirmar_venta(request):
+    from datetime import date, datetime, timedelta
+    
+    if request.method != 'POST':
+        return redirect('CreateVenta')
+    
+    # Obtener el carrito
+    carrito = request.session.get('carrito', [])
+    if not carrito:
+        messages.error(request, "No hay productos en el carrito para procesar la venta.")
+        return redirect('CreateVenta')
+    
+    # Calcular el total
+    total_venta = sum(item.get('subtotal', 0) for item in carrito)
+    
+    # Crear el registro de venta
+    venta = Ventas.objects.create(
+        usuario=request.user,
+        fecha_venta=date.today(),
+        precio_total=total_venta
+    )
+    
+    # Procesar cada ítem del carrito
+    for item in carrito:
+        if 'lote_id' not in item:
+            continue
+        
+        lote = get_object_or_404(LoteMedicamento, id=item['lote_id'], activo=True)
+        cantidad = item.get('cantidad', 0)
+        
+        # Verificar stock disponible
+        if lote.cantidad < cantidad:
+            # Rollback de la transacción
+            transaction.set_rollback(True)
+            messages.error(request, f"No hay suficiente stock de {lote.medicamento.nombre} (Lote: {lote.lote_fabricante}). Stock actual: {lote.cantidad}")
+            return redirect('CreateVenta')
+        
+        # Crear el detalle de venta
+        detalle_venta = DetalleVenta.objects.create(
+            venta=venta,
+            medicamento=lote.medicamento,
+            precio=lote.precio_venta,
+            cantidad=cantidad
+        )
+        
+        # Actualizar stock del lote
+        lote.cantidad -= cantidad
+        lote.save()
+        
+        # Si el lote se queda sin stock, marcarlo como inactivo
+        if lote.cantidad <= 0:
+            lote.activo = False
+            lote.save()
+    
+    # Limpiar el carrito
+    request.session['carrito'] = []
+    request.session.modified = True
+    
+    # Generar factura si se proporcionaron datos del cliente
+    if 'nombre_cliente' in request.POST and request.POST['nombre_cliente'].strip():
+        try:
+            # Datos del cliente
+            nombre_cliente = request.POST.get('nombre_cliente')
+            nit_ci = request.POST.get('nit_ci')
+            telefono = request.POST.get('telefono', '')
+            
+            # Buscar o crear cliente
+            cliente, created = Cliente.objects.get_or_create(
+                nit_ci=nit_ci,
+                defaults={
+                    'nombre': nombre_cliente,
+                    'telefono': telefono,
+                    'activo': True
+                }
+            )
+            
+            # Si el cliente existe pero los datos son diferentes, actualizarlos
+            if not created:
+                cliente.nombre = nombre_cliente  # Actualizar nombre si cambió
+                if telefono:
+                    cliente.telefono = telefono  # Actualizar teléfono si se proporcionó
+                cliente.save()
+            
+            # Generar factura
+            fecha_limite = datetime.now().date() + timedelta(days=60)
+            factura = Factura(
+                venta=venta,
+                cliente=cliente,
+                monto_total=venta.precio_total,
+                fecha_limite_emision=fecha_limite
+            )
+            factura.save()
+            
+            messages.success(request, f"Venta registrada y factura #{factura.numero_factura} generada exitosamente.")
+            return redirect('detalle_factura', factura_id=factura.id)
+        except Exception as e:
+            messages.warning(request, f"Venta registrada pero hubo un error al generar la factura: {str(e)}")
+    else:
+        messages.success(request, "Venta registrada exitosamente.")
+    
+    return redirect('Ventas')

@@ -96,10 +96,12 @@ class LoteMedicamento(models.Model):
     fecha_compra = models.DateField()
     fecha_vencimiento = models.DateField(null=True, blank=True)
     fecha_produccion = models.DateField(null=True, blank=True)
+    lote_fabricante = models.CharField(max_length=50, null=True, blank=True, verbose_name="Lote del Fabricante")
     activo = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"Lote {self.id} - {self.medicamento.nombre}"
+        lote_fab = f" - Lote fabricante: {self.lote_fabricante}" if self.lote_fabricante else ""
+        return f"Lote {self.id} - {self.medicamento.nombre}{lote_fab}"
 
 class Ventas(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
@@ -157,3 +159,44 @@ class DetalleVenta(models.Model):
 
 # Al guardar el DetalleVenta, llamamos a 'procesar_fifo' para gestionar el stock.
 
+# Módulo para los clientes
+class Cliente(models.Model):
+    nombre = models.CharField(max_length=200)
+    nit_ci = models.CharField(max_length=20)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    activo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.nombre} - NIT/CI: {self.nit_ci}"
+
+# Módulo de Facturación
+class Factura(models.Model):
+    venta = models.OneToOneField(Ventas, on_delete=models.CASCADE, related_name='factura')
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
+    numero_factura = models.IntegerField(unique=True)
+    fecha_emision = models.DateTimeField(auto_now_add=True)
+    nit_empresa = models.CharField(max_length=20, default="123456789")  # NIT de la farmacia (simulado)
+    codigo_autorizacion = models.CharField(max_length=50, default="7904006306693")  # (simulado)
+    codigo_control = models.CharField(max_length=20, default="AB-32-DC")  # (simulado)
+    fecha_limite_emision = models.DateField(null=True, blank=True)
+    monto_total = models.DecimalField(max_digits=10, decimal_places=2)
+    activo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Factura #{self.numero_factura} - Cliente: {self.cliente.nombre}"
+    
+    def save(self, *args, **kwargs):
+        # Si es una nueva factura y no tiene número asignado, generar uno
+        if not self.numero_factura:
+            # Obtener el último número de factura y sumar 1
+            ultima_factura = Factura.objects.order_by('-numero_factura').first()
+            if ultima_factura:
+                self.numero_factura = ultima_factura.numero_factura + 1
+            else:
+                self.numero_factura = 1
+                
+        # Asegurar que el monto_total coincida con el precio_total de la venta
+        if not self.monto_total and self.venta:
+            self.monto_total = self.venta.precio_total
+            
+        super().save(*args, **kwargs)

@@ -1,17 +1,83 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Detalles de la Venta {{ venta.id }}</h2>
-<p>Usuario: {{ venta.usuario.username }}</p>
-<p>Fecha: {{ venta.fecha_venta }}</p> <!-- Campo fecha_venta -->
-<p>Total: {{ venta.precio_total }} bs</p> <!-- Campo precio_total -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0"><i class="fas fa-shopping-bag mr-2"></i> Detalles de la Venta {{ venta.id }}</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <th><i class="fas fa-user mr-2"></i> Usuario:</th>
+                        <td>{{ venta.usuario.username }}</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-calendar mr-2"></i> Fecha:</th>
+                        <td>{{ venta.fecha_venta|date:"d/m/Y" }}</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-dollar-sign mr-2"></i> Total:</th>
+                        <td><strong>{{ venta.precio_total }} Bs</strong></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6 text-right">
+                <div class="d-flex justify-content-end mb-3">
+                    {% if venta.factura %}
+                    <a href="{% url 'detalle_factura' venta.factura.id %}" class="btn btn-info mr-2">
+                        <i class="fas fa-file-invoice mr-1"></i> Ver Factura
+                    </a>
+                    <a href="{% url 'imprimir_factura' venta.factura.id %}" class="btn btn-secondary" target="_blank">
+                        <i class="fas fa-print mr-1"></i> Imprimir Factura
+                    </a>
+                    {% else %}
+                    <a href="{% url 'generar_factura' venta.id %}" class="btn btn-success">
+                        <i class="fas fa-file-invoice mr-1"></i> Generar Factura
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-<h3>Productos en esta venta:</h3>
-<ul>
-    {% for detalle in venta.detalles.all %}  <!-- Usa el related_name "detalles" -->
-        <li>{{ detalle.medicamento.nombre }} - Cantidad: {{ detalle.cantidad }} - Precio: {{ detalle.precio }} bs</li>
-    {% endfor %}
-</ul>
+        <h5 class="mt-4 mb-3"><i class="fas fa-pills mr-2"></i> Productos en esta venta:</h5>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in venta.detalles.all %}
+                    <tr>
+                        <td>{{ detalle.medicamento.nombre }}</td>
+                        <td>{{ detalle.cantidad }}</td>
+                        <td>{{ detalle.precio }} Bs</td>
+                        <td>{% widthratio detalle.cantidad 1 detalle.precio %} Bs</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="3" class="text-right">Total:</th>
+                        <th>{{ venta.precio_total }} Bs</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <a href="{% url 'Ventas' %}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left mr-1"></i> Volver al listado de ventas
+        </a>
+    </div>
+</div>
+{% endblock %}
 
-<a href="{% url 'Ventas' %}" class="btn btn-primary">Volver a listado de ventas</a>
+{% block extra_js %}
 {% endblock %}

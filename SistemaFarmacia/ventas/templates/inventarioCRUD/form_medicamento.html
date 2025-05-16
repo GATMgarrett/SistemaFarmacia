@@ -1,46 +1,50 @@
 {% load widget_tweaks %}
 
-<form method="post" action="{% url 'CreateMedicamentos' %}">
+<form method="post" action="">
     {% csrf_token %}
-    <div class="form-group">
-        <label for="id_nombre">Nombre del medicamento</label>
-        {{ formulario.nombre|add_class:"form-control" }}
-    </div>
-
-    <div class="form-group">
-        <label for="id_descripcion">Descripción</label>
-        {{ formulario.descripcion|add_class:"form-control" }}
-    </div>
-
-    <div class="form-group">
-        <label for="id_precio">Precio</label>
-        {{ formulario.precio|add_class:"form-control" }}
-    </div>
-
-    <div class="form-group">
-        <label for="id_fecha_vencimiento">Fecha de Vencimiento</label>
-        {{ formulario.fecha_vencimiento|add_class:"form-control" }}
-    </div>
-
-    <div class="form-group">
-        <label for="id_stock">Stock</label>
-        {{ formulario.stock|add_class:"form-control" }}
-    </div>
-
-    <div class="form-group">
-        <label for="id_categoria">Categoría</label>
-        {{ formulario.categoria|add_class:"form-control" }}
-    </div>
     
-    <div class="form-group">
-        <label for="id_tipo">Tipo</label>
-        {{ formulario.tipo|add_class:"form-control" }}
-    </div>    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group mb-3">
+                <label for="id_nombre" class="form-label">Nombre del medicamento</label>
+                {{ formulario.nombre|add_class:"form-control"|attr:"placeholder:Ingrese el nombre comercial" }}
+            </div>
 
-    <div class="form-group">
-        <label for="id_laboratorio">Laboratorio</label>
-        {{ formulario.laboratorio|add_class:"form-control" }}
+            <div class="form-group mb-3">
+                <label for="id_descripcion" class="form-label">Descripción</label>
+                {{ formulario.descripcion|add_class:"form-control"|attr:"placeholder:Características principales" }}
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="form-group mb-3">
+                <label for="id_categoria" class="form-label">Categoría</label>
+                {{ formulario.categoria|add_class:"form-control" }}
+                <small class="text-muted">Seleccione la categoría del medicamento</small>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="id_tipo" class="form-label">Tipo</label>
+                {{ formulario.tipo|add_class:"form-control" }}
+                <small class="text-muted">Seleccione el tipo de medicamento</small>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="id_laboratorio" class="form-label">Laboratorio</label>
+                {{ formulario.laboratorio|add_class:"form-control" }}
+            </div>
+            
+            <!-- Campo oculto para stock con valor 0 por defecto -->
+            {{ formulario.stock|attr:"type:hidden"|attr:"value:0" }}
+        </div>
     </div>
 
-    <button type="submit" class="btn btn-primary">Guardar Medicamento</button>
+    <div class="mt-4 d-flex justify-content-between">
+        <a href="{% url 'Medicamentos' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-2"></i>Cancelar
+        </a>
+        <button type="submit" class="btn btn-success">
+            <i class="fas fa-save mr-2"></i>Guardar Medicamento
+        </button>
+    </div>
 </form>

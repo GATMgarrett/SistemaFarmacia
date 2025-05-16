@@ -8,7 +8,11 @@ from .models import Ventas, DetalleVenta, Categorias, Tipos
 # Aqui vamos a crear las clases de los fomrularios de los modelos
 
 class UsuarioForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput)
+    password = forms.CharField(
+        widget=forms.PasswordInput(),
+        required=False,  # Hacerlo opcional
+        help_text="Dejar en blanco para mantener la contraseña actual (solo en edición)"
+    )
     grupo = forms.ModelChoiceField(
         queryset=Group.objects.all(),
         widget=Select2Widget,
@@ -19,16 +23,18 @@ class UsuarioForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ('username', 'first_name', 'last_name', 'email', 'password', 'grupo')
-        widgets = {
-            'password': forms.PasswordInput(),  # Esto asegura que el campo de la contraseña se muestre como tal
-        }
     
     def save(self, commit=True):
         user = super(UsuarioForm, self).save(commit=False)
-        user.set_password(self.cleaned_data["password"])
+        # Solo actualizar la contraseña si se proporciona una
+        if self.cleaned_data.get("password"):
+            user.set_password(self.cleaned_data["password"])
+        
         if commit:
             user.save()
-            if self.cleaned_data["grupo"]:
+            if self.cleaned_data.get("grupo"):
+                # Limpiar grupos existentes y agregar el nuevo
+                user.groups.clear()
                 user.groups.add(self.cleaned_data["grupo"])
         return user
 

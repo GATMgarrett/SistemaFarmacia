@@ -6,17 +6,19 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Farmacia Noemi - LogIn</title>
 
-  
     <!-- Tempusdominus Bootstrap 4 -->
     <link rel="stylesheet" href="lib/adminlite/plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css">
     <!-- iCheck -->
     <link rel="stylesheet" href="lib/adminlite/plugins/icheck-bootstrap/icheck-bootstrap.min.css">
+    <!-- Bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" 
-    integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
-            
+        integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
     <style>
         body {
-            background: linear-gradient(to bottom, #b3e0f2, #ffffff); /* Celeste claro y blanco */
+            background: linear-gradient(to bottom, #b3e0f2, #ffffff);
             margin: 0;
             display: flex;
             align-items: center;
@@ -52,21 +54,22 @@
         input[type="submit"]:hover {
             background-color: #0056b3;
         }
-
-         /* Estilos personalizados para el container */
-         .custom-container {
-            background-color: #cfe4f8; /* Azul claro */
-            padding: 20px; /* Espacio interior */
-            border-radius: 10px; /* Bordes redondeados */
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2); /* Sombra */
+        .custom-container {
+            background-color: #cfe4f8;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
         }
-
-        /* Estilos para centrar el contenido */
         .center-content {
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
+        }
+        .input-group-text {
+            background-color: #e9ecef;
+            border: none;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -88,11 +91,18 @@
                         {% csrf_token %}
                         <div class="form-group">
                             <label for="username">Nombre de usuario:</label>
-                            <input type="" name="username" class="form-control" required id="username">
+                            <input type="text" name="username" class="form-control" required id="username">
                         </div>
                         <div class="form-group">
                             <label for="password">Contraseña:</label>
-                            <input type="password" name="password" class="form-control" required id="password">
+                            <div class="input-group">
+                                <input type="password" name="password" class="form-control" required id="password">
+                                <div class="input-group-append">
+                                    <span class="input-group-text" onclick="togglePassword()">
+                                        <i class="fa-solid fa-eye" id="toggleIcon"></i>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary">Ingresar</button>
                     </form>
@@ -100,6 +110,17 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById("password");
+            const toggleIcon = document.getElementById("toggleIcon");
+            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+            passwordInput.setAttribute("type", type);
+            toggleIcon.classList.toggle("fa-eye");
+            toggleIcon.classList.toggle("fa-eye-slash");
+        }
+    </script>
 
 </body>
 </html>

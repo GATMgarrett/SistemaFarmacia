@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <br>
+
+    <!-- Card de Facturas -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-file-invoice mr-2"></i> Facturas Emitidas
+            </h4>
+            <span class="badge bg-light text-dark">
+                {{ facturas.paginator.count }} registros
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <!-- Formulario de búsqueda -->
+            <form method="GET" class="mb-3">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Buscar por cliente, NIT/CI o número de factura" value="{{ query|default:'' }}">
+                    <button class="btn btn-outline-primary" type="submit">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>Nº Factura</th>
+                            <th>Fecha Emisión</th>
+                            <th>Cliente</th>
+                            <th>NIT/CI</th>
+                            <th>Monto Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for factura in facturas %}
+                        <tr>
+                            <td>{{ factura.numero_factura }}</td>
+                            <td>{{ factura.fecha_emision|date:"d/m/Y H:i" }}</td>
+                            <td>{{ factura.cliente.nombre }}</td>
+                            <td>{{ factura.cliente.nit_ci }}</td>
+                            <td>{{ factura.monto_total }} Bs</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'detalle_factura' factura.id %}" 
+                                       class="btn btn-sm btn-outline-info" 
+                                       title="Ver detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'imprimir_factura' factura.id %}" 
+                                       class="btn btn-sm btn-outline-success" 
+                                       title="Imprimir factura">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                    <a href="{% url 'anular_factura' factura.id %}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       title="Anular factura">
+                                        <i class="fas fa-ban"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-info-circle me-2"></i> No se encontraron facturas.
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination">
+                <span class="step-links">
+                    {% if facturas.has_previous %}
+                        <a href="?q={{ query }}&page=1">&laquo; Primero</a>
+                        <a href="?q={{ query }}&page={{ facturas.previous_page_number }}">Anterior</a>
+                    {% endif %}
+
+                    <span class="current">
+                        Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}.
+                    </span>
+
+                    {% if facturas.has_next %}
+                        <a href="?q={{ query }}&page={{ facturas.next_page_number }}">Siguiente</a>
+                        <a href="?q={{ query }}&page={{ facturas.paginator.num_pages }}">Último &raquo;</a>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

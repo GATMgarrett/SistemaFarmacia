@@ -1,21 +1,22 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block content %}
-<div>
+<div class="container-fluid">
     <br>
 
     <!-- Tabla de Medicamentos Activos -->
-    <div class="card">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-pills mr-2"></i>Medicamentos Activos
+            </h4>
+            <span class="badge bg-light text-dark">
+                {{ medicamentos_activos.paginator.count }} registros
+            </span>
+        </div>
+        
         <div class="card-body">
-            <h4 class="card-title">Panel de Medicamentos</h4>
-            <p class="card-text">Listado de medicamentos registrados</p>
-
-            <!-- Botón para agregar nuevo medicamento -->
-            <div class="mb-3">
-                <a class="btn btn-success" href="{% url 'CreateMedicamentos' %}" role="button">
-                    <i class="fas fa-plus-circle"></i> Agregar Nuevo Medicamento
-                </a>
-            </div>
-
             <!-- Selección de número de medicamentos por página -->
             <form method="get" class="mb-3">
                 <label for="num_medicamentos">Ver </label>
@@ -28,115 +29,175 @@
                 <input type="hidden" name="page_activos" value="{{ medicamentos_activos.number }}">
             </form>
 
-            <!-- Tabla -->
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
-                        <th>Stock</th>
-                        <th>Laboratorio</th>
-                        <th>Categoria</th>
-                        <th>Tipo</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for medicamento in medicamentos_activos %}
-                    <tr>
-                        <td>{{ medicamento.id }}</td>
-                        <td>{{ medicamento.nombre }}</td>
-                        <td>{{ medicamento.descripcion }}</td>
-                        <td>{{ medicamento.stock }}</td>
-                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
-                        <td>{{ medicamento.categoria.nombre_categoria|default:"No asignada" }}</td>
-                        <td>{{ medicamento.tipo.nombre_tipo|default:"No asignado" }}</td>
-                        <td>
-                            <a class="btn btn-info" href="{% url 'UpdateMedicamentos' medicamento.id %}" role="button">
-                                <i class="fas fa-edit"></i> 
-                            </a>
-                            <a class="btn btn-danger" href="{% url 'DeleteMedicamentos' medicamento.id %}" role="button">
-                                <i class="fas fa-trash-alt"></i> 
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Stock</th>
+                            <th>Laboratorio</th>
+                            <th>Categoria</th>
+                            <th>Tipo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicamento in medicamentos_activos %}
+                        <tr>
+                            <td>{{ medicamento.id }}</td>
+                            <td>{{ medicamento.nombre }}</td>
+                            <td>{{ medicamento.descripcion }}</td>
+                            <td>{{ medicamento.stock }}</td>
+                            <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
+                            <td>{{ medicamento.categoria.nombre_categoria|default:"No asignada" }}</td>
+                            <td>{{ medicamento.tipo.nombre_tipo|default:"No asignado" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'UpdateMedicamentos' medicamento.id %}" 
+                                       class="btn btn-outline-primary" 
+                                       title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-danger"
+                                       title="Desactivar"
+                                       onclick="confirmarDesactivacion({{ medicamento.id }})">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No hay medicamentos activos</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
             <!-- Paginación -->
-            <div class="d-flex justify-content-between">
-                <div>
+            <div class="pagination">
+                <span class="step-links">
                     {% if medicamentos_activos.has_previous %}
-                    <a href="?page_activos=1&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Primera</a>
-                    <a href="?page_activos={{ medicamentos_activos.previous_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Anterior</a>
+                        <a href="?page_activos=1&num_medicamentos={{ num_medicamentos }}">&laquo; Primero</a>
+                        <a href="?page_activos={{ medicamentos_activos.previous_page_number }}&num_medicamentos={{ num_medicamentos }}">Anterior</a>
                     {% endif %}
-                </div>
-                <div>
+
+                    <span class="current">
+                        Página {{ medicamentos_activos.number }} de {{ medicamentos_activos.paginator.num_pages }}.
+                    </span>
+
                     {% if medicamentos_activos.has_next %}
-                    <a href="?page_activos={{ medicamentos_activos.next_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Siguiente</a>
-                    <a href="?page_activos={{ medicamentos_activos.paginator.num_pages }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Última</a>
+                        <a href="?page_activos={{ medicamentos_activos.next_page_number }}&num_medicamentos={{ num_medicamentos }}">Siguiente</a>
+                        <a href="?page_activos={{ medicamentos_activos.paginator.num_pages }}&num_medicamentos={{ num_medicamentos }}">Último &raquo;</a>
                     {% endif %}
-                </div>
+                </span>
             </div>
+        </div>
+
+        <div class="card-footer">
+            <a href="{% url 'CreateMedicamentos' %}" class="btn btn-success">
+                <i class="fas fa-plus-circle mr-2"></i>Nuevo Medicamento
+            </a>
         </div>
     </div>
 
-    <br><br>
-
     <!-- Tabla de Medicamentos Inactivos -->
     <div class="card">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-pills mr-2"></i>Medicamentos Inactivos
+            </h4>
+            <span class="badge bg-light text-dark">
+                {{ medicamentos_inactivos.paginator.count }} registros
+            </span>
+        </div>
+        
         <div class="card-body">
-            <h4 class="card-title">Medicamentos Inactivos</h4>
-            <p class="card-text">Listado de medicamentos inactivos</p>
-
-            <!-- Tabla -->
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
-                        <th>Stock</th>
-                        <th>Laboratorio</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for medicamento in medicamentos_inactivos %}
-                    <tr>
-                        <td>{{ medicamento.id }}</td>
-                        <td>{{ medicamento.nombre }}</td>
-                        <td>{{ medicamento.descripcion }}</td>
-                        <td>{{ medicamento.stock }}</td>
-                        <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
-                        <td>
-                            <a class="btn btn-success" href="{% url 'ActivateMedicamentos' medicamento.id %}" role="button">
-                                <i class="fas fa-check-circle"></i> Activar
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            <!-- Paginación -->
-            <div class="d-flex justify-content-between">
-                <div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Stock</th>
+                            <th>Laboratorio</th>
+                            <th>Categoria</th>
+                            <th>Tipo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicamento in medicamentos_inactivos %}
+                        <tr>
+                            <td>{{ medicamento.id }}</td>
+                            <td>{{ medicamento.nombre }}</td>
+                            <td>{{ medicamento.descripcion }}</td>
+                            <td>{{ medicamento.stock }}</td>
+                            <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
+                            <td>{{ medicamento.categoria.nombre_categoria|default:"No asignada" }}</td>
+                            <td>{{ medicamento.tipo.nombre_tipo|default:"No asignado" }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success" 
+                                       title="Activar"
+                                       onclick="confirmarActivacion({{ medicamento.id }})">
+                                    <i class="fas fa-check mr-1"></i>Activar
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No hay medicamentos inactivos</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación para inactivos -->
+            <div class="pagination">
+                <span class="step-links">
                     {% if medicamentos_inactivos.has_previous %}
-                    <a href="?page_inactivos=1&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Primera</a>
-                    <a href="?page_inactivos={{ medicamentos_inactivos.previous_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Anterior</a>
+                        <a href="?page_inactivos=1&num_medicamentos={{ num_medicamentos }}">&laquo; Primero</a>
+                        <a href="?page_inactivos={{ medicamentos_inactivos.previous_page_number }}&num_medicamentos={{ num_medicamentos }}">Anterior</a>
                     {% endif %}
-                </div>
-                <div>
+
+                    <span class="current">
+                        Página {{ medicamentos_inactivos.number }} de {{ medicamentos_inactivos.paginator.num_pages }}.
+                    </span>
+
                     {% if medicamentos_inactivos.has_next %}
-                    <a href="?page_inactivos={{ medicamentos_inactivos.next_page_number }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Siguiente</a>
-                    <a href="?page_inactivos={{ medicamentos_inactivos.paginator.num_pages }}&num_medicamentos={{ num_medicamentos }}" class="btn btn-secondary">Última</a>
+                        <a href="?page_inactivos={{ medicamentos_inactivos.next_page_number }}&num_medicamentos={{ num_medicamentos }}">Siguiente</a>
+                        <a href="?page_inactivos={{ medicamentos_inactivos.paginator.num_pages }}&num_medicamentos={{ num_medicamentos }}">Último &raquo;</a>
                     {% endif %}
-                </div>
+                </span>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Función para confirmar desactivación
+function confirmarDesactivacion(id) {
+    if (confirm('¿Confirmas que deseas desactivar este medicamento?')) {
+        window.location.href = "{% url 'DeleteMedicamentos' 0 %}".replace('0', id);
+    }
+}
+
+// Función para confirmar activación
+function confirmarActivacion(id) {
+    if (confirm('¿Confirmas que deseas reactivar este medicamento?')) {
+        window.location.href = "{% url 'ActivateMedicamentos' 0 %}".replace('0', id);
+    }
+}
+
+// Event listeners para tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips de Bootstrap
+    $('[title]').tooltip();
+});
+</script>
 {% endblock %}

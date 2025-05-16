@@ -106,6 +106,16 @@
               </a>
             </li>
             {% endif %}
+            
+            <!-- Facturas -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos or "Auxiliar" in grupos %}
+            <li class="nav-item">
+              <a href="{% url 'facturas' %}" class="nav-link">
+                <i class="nav-icon fas fa-file-invoice"></i>
+                <p>Facturas</p>
+              </a>
+            </li>
+            {% endif %}
 
             <li class="nav-header">EMPRESA</li>
 

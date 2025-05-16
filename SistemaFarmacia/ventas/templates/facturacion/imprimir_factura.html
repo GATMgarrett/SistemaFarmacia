@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+{% load static %}
+{% load number_to_words %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura #{{ factura.numero_factura }}</title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            width: 80mm;
+            margin: 0;
+            padding: 5px;
+            line-height: 1.2;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 5px 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        
+        .company-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin: 2px 0;
+        }
+        
+        .company-info {
+            font-size: 10px;
+            margin: 2px 0;
+        }
+        
+        .invoice-title {
+            font-weight: bold;
+            text-align: center;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .invoice-info {
+            margin: 5px 0;
+        }
+        
+        .invoice-info p {
+            margin: 2px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+        
+        table th {
+            text-align: left;
+            border-bottom: 1px dashed #000;
+            padding: 2px 0;
+        }
+        
+        table td {
+            padding: 2px 0;
+            vertical-align: top;
+        }
+        
+        .qrcode {
+            text-align: center;
+            margin: 5px 0;
+        }
+        
+        .legal {
+            font-size: 9px;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .totals {
+            margin: 5px 0;
+            text-align: right;
+        }
+        
+        .total-row {
+            margin: 2px 0;
+        }
+        
+        .total-amount {
+            font-weight: bold;
+        }
+        
+        .thank-you {
+            text-align: center;
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: center; margin-bottom: 10px;">
+        <button onclick="window.print();" style="padding: 5px 10px; font-size: 14px;">
+            🖨️ Imprimir Recibo
+        </button>
+    </div>
+
+    <div class="header">
+        <div class="company-name">FARMACIA YASNEY</div>
+        <div class="company-info">Av. 31 de octubre #123, La Paz</div>
+        <div class="company-info">Tel: (591) XXXXXX - NIT: XXXXXXX</div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="invoice-title">FACTURA</div>
+    
+    <div class="invoice-info">
+        <p><strong>N°:</strong> {{ factura.numero_factura }}</p>
+        <p><strong>Fecha:</strong> {{ factura.fecha_emision|date:"d/m/Y H:i" }}</p>
+        <p><strong>Cliente:</strong> {{ factura.cliente.nombre }}</p>
+        <p><strong>NIT/CI:</strong> {{ factura.cliente.nit_ci }}</p>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 15%;">Cant.</th>
+                <th style="width: 45%;">Descripción</th>
+                <th style="width: 20%;" class="text-right">P. Unit.</th>
+                <th style="width: 20%;" class="text-right">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detalle in factura.venta.detalles.all %}
+            <tr>
+                <td>{{ detalle.cantidad }}</td>
+                <td>{{ detalle.medicamento.nombre|truncatechars:20 }}</td>
+                <td class="text-right">{{ detalle.precio|floatformat:2 }}</td>
+                <td class="text-right">{{ detalle.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="divider"></div>
+    
+    <div class="totals">
+        <div class="total-row">
+            <span>SUBTOTAL Bs.</span>
+            <span class="total-amount">{{ factura.subtotal|floatformat:2 }}</span>
+        </div>
+        {% if factura.descuento > 0 %}
+        <div class="total-row">
+            <span>DESCUENTO Bs.</span>
+            <span class="total-amount">-{{ factura.descuento|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="total-row" style="border-top: 1px dashed #000; padding-top: 3px; margin-top: 3px;">
+            <span><strong>TOTAL Bs.</strong></span>
+            <span class="total-amount"><strong>{{ factura.monto_total|floatformat:2 }}</strong></span>
+        </div>
+    </div>
+    
+    <div style="margin: 5px 0; font-style: italic; font-size: 10px;">
+        Son: {{ factura.monto_total|floatformat:"0"|number_to_words }} BOLIVIANOS
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="qrcode">
+        [CÓDIGO DE CONTROL]<br>
+        {{ factura.codigo_control }}
+    </div>
+    
+    <div class="legal">
+        <p>ESTA FACTURA CONTRIBUYE AL DESARROLLO DEL PAÍS</p>
+        <p>USO ILÍCITO SERÁ SANCIONADO DE ACUERDO A LEY</p>
+        <p>Ley Nº 453: El proveedor debe exhibir certificaciones de habilitación</p>
+    </div>
+    
+    <div class="thank-you">
+        ¡Gracias por su compra!
+    </div>
+    
+    <script>
+        // Imprimir automáticamente al cargar
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>

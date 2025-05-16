@@ -1,138 +1,211 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block content %}
-<div class="container">
-  <h2>Registrar Nueva Compra</h2>
-
-  <!-- Formulario para Confirmar Compra -->
-  <form method="POST" action="{% url 'CreateCompra' %}">
-    {% csrf_token %}
-    <label for="proveedor">Proveedor:</label>
-    <select name="proveedor" id="proveedor" class="form-control mb-3" required>
-      {% for proveedor in proveedores %}
-        <option value="{{ proveedor.id }}">{{ proveedor.nombre_empresa }}</option>
-      {% endfor %}
-    </select>
-
-    <div class="card">
-      <div class="card-header">Carrito de Compras</div>
-      <div class="card-body">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Medicamento</th>
-              <th>Cantidad</th>
-              <th>Subtotal</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in productos_compra_carrito %}
-            <tr>
-              <td>{{ item.nombre }}</td>
-              <td>{{ item.cantidad }}</td>
-              <td>{{ item.subtotal|floatformat:2 }} bs</td>
-              <td>
-                <!-- Formulario independiente para eliminar del carrito -->
-                <form method="POST" action="{% url 'remove_from_cart_compra' item.medicamento_id %}">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-danger">Quitar</button>
-                </form>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="4">No hay productos en el carrito.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        <h5>Total: {{ total_compra }}</h5>
-        <!-- Botón para confirmar la compra -->
-        <button type="submit" class="btn btn-success">Confirmar Compra</button>
-      </div>
+<div class="container-fluid">
+  <br>
+  
+  <!-- Cabecera de la página -->
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h4 class="card-title mb-0">
+        <i class="fas fa-shopping-cart mr-2"></i>Registro de Nueva Compra
+      </h4>
     </div>
-  </form>
-
-  <!-- Card para Medicamentos Disponibles -->
-  <div class="card mt-4">
-    <div class="card-header">Medicamentos Disponibles</div>
+    
     <div class="card-body">
-      <!-- Formulario de búsqueda -->
-      <form method="GET" class="mb-3">
-        <div class="input-group">
-          <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Buscar medicamento...">
-          <button type="submit" class="btn btn-primary">Buscar</button>
+      <!-- Selección de proveedor -->
+      <form method="POST" action="{% url 'CreateCompra' %}" id="formCompra">
+        {% csrf_token %}
+        <div class="form-group mb-4">
+          <label for="proveedor" class="form-label"><i class="fas fa-building mr-1"></i>Seleccione el Proveedor:</label>
+          <select name="proveedor" id="proveedor" class="form-control" required>
+            {% for proveedor in proveedores %}
+              <option value="{{ proveedor.id }}">{{ proveedor.nombre_empresa }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      
+        <!-- Medicamentos Disponibles -->
+        <div class="card mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-pills mr-2"></i>Medicamentos Disponibles</h5>
+          </div>
+          <div class="card-body">
+            <!-- Buscador de medicamentos -->
+            <form method="GET" class="mb-3">
+              <div class="input-group">
+                <input type="text" name="q" value="{{ query|default:'' }}" class="form-control" placeholder="Buscar medicamento...">
+                <button type="submit" class="btn btn-outline-primary">
+                  <i class="fas fa-search"></i> Buscar
+                </button>
+              </div>
+              <small class="text-muted">Escriba el nombre del medicamento y presione el botón Buscar</small>
+            </form>
+
+            <!-- Tabla de medicamentos - Mantiene todos los campos visibles -->
+            <div class="table-responsive">
+              <table class="table table-hover table-striped">
+                <thead class="thead-dark">
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Cantidad</th>
+                    <th>Precio de Compra</th>
+                    <th>Precio de Venta</th>
+                    <th>Lote Fabricante</th>
+                    <th>Fecha de Producción</th>
+                    <th>Fecha de Vencimiento</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for medicamento in medicamentos %}
+                  <tr>
+                    <td>{{ medicamento.nombre }}</td>
+                    <!-- Formulario independiente para Agregar al carrito -->
+                    <form method="POST" action="{% url 'add_to_cart_compra' medicamento.id %}">
+                      {% csrf_token %}
+                      <td>
+                        <input type="number" name="cantidad" min="1" placeholder="Cantidad" value="1" class="form-control" required>
+                      </td>
+                      <td>
+                        <input type="number" step="0.01" name="precio_compra" placeholder="Precio" class="form-control" required>
+                      </td>
+                      <td>
+                        <input type="number" step="0.01" name="precio_venta" placeholder="Precio" class="form-control" required>
+                      </td>
+                      <td>
+                        <input type="text" name="lote_fabricante" placeholder="Lote" class="form-control" required>
+                      </td>
+                      <td>
+                        <input type="date" name="fecha_produccion" class="form-control" required>
+                      </td>
+                      <td>
+                        <input type="date" name="fecha_vencimiento" class="form-control" required>
+                      </td>
+                      <td>
+                        <button type="submit" class="btn btn-sm btn-success">
+                          <i class="fas fa-cart-plus mr-1"></i> Agregar
+                        </button>
+                      </td>
+                    </form>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="8" class="text-center py-3">
+                      {% if query %}
+                        <div class="alert alert-warning mb-0">
+                          <i class="fas fa-exclamation-triangle"></i> No se encontraron medicamentos con "{{ query }}"
+                        </div>
+                      {% else %}
+                        <div class="text-muted">
+                          <i class="fas fa-info-circle"></i> Utilice el buscador para encontrar medicamentos
+                        </div>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Paginación mejorada -->
+            {% if medicamentos.has_other_pages %}
+            <nav aria-label="Paginación" class="mt-3">
+              <ul class="pagination pagination-sm justify-content-center">
+                {% if medicamentos.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?q={{ query|default:'' }}&page={{ medicamentos.previous_page_number }}">&laquo;</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                  </li>
+                {% endif %}
+                
+                {% for i in medicamentos.paginator.page_range %}
+                  {% if medicamentos.number == i %}
+                    <li class="page-item active">
+                      <span class="page-link">{{ i }}</span>
+                    </li>
+                  {% else %}
+                    <li class="page-item">
+                      <a class="page-link" href="?q={{ query|default:'' }}&page={{ i }}">{{ i }}</a>
+                    </li>
+                  {% endif %}
+                {% endfor %}
+                
+                {% if medicamentos.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?q={{ query|default:'' }}&page={{ medicamentos.next_page_number }}">&raquo;</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                  </li>
+                {% endif %}
+              </ul>
+            </nav>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Carrito de Compras (Al final como solicitado) -->
+        <div class="card border-success">
+          <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i class="fas fa-cart-arrow-down mr-2"></i>Carrito de Compra
+            </h5>
+            <span class="badge bg-light text-dark">
+              {{ productos_compra_carrito|length }} producto(s)
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Medicamento</th>
+                    <th>Cantidad</th>
+                    <th>Subtotal</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in productos_compra_carrito %}
+                  <tr>
+                    <td>{{ item.nombre }}</td>
+                    <td>{{ item.cantidad }}</td>
+                    <td>{{ item.subtotal|floatformat:2 }} Bs</td>
+                    <td>
+                      <!-- Formulario independiente para eliminar del carrito -->
+                      <form method="POST" action="{% url 'remove_from_cart_compra' item.medicamento_id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                          <i class="fas fa-trash"></i> Quitar
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-center text-muted">No hay productos en el carrito.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Resumen y botón de confirmación -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <h5 class="text-success mb-0">Total: <strong>{{ total_compra }} Bs</strong></h5>
+              <button type="submit" form="formCompra" class="btn btn-success {% if not productos_compra_carrito %}disabled{% endif %}">
+                <i class="fas fa-check-circle mr-2"></i>Confirmar Compra
+              </button>
+            </div>
+          </div>
         </div>
       </form>
-
-      <!-- Tabla de medicamentos -->
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Cantidad</th>
-            <th>Precio de Compra</th>
-            <th>Precio de Venta</th>
-            <th>Fecha de Producción</th>
-            <th>Fecha de Vencimiento</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for medicamento in medicamentos %}
-          <tr>
-            <td>{{ medicamento.nombre }}</td>
-            <!-- Formulario independiente para Agregar al carrito -->
-            <form method="POST" action="{% url 'add_to_cart_compra' medicamento.id %}">
-              {% csrf_token %}
-              <td>
-                <input type="number" name="cantidad" min="1" placeholder="Cantidad" class="form-control" required>
-              </td>
-              <td>
-                <input type="number" step="0.01" name="precio_compra" placeholder="Precio de Compra" class="form-control" required>
-              </td>
-              <td>
-                <input type="number" step="0.01" name="precio_venta" placeholder="Precio de Venta" class="form-control" required>
-              </td>
-              <td>
-                <input type="date" name="fecha_produccion" class="form-control" required>
-              </td>
-              <td>
-                <input type="date" name="fecha_vencimiento" class="form-control" required>
-              </td>
-              <td>
-                <button type="submit" class="btn btn-primary">Agregar</button>
-              </td>
-            </form>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="7" class="text-center">No se encontraron medicamentos.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
-      <!-- Paginación -->
-      <nav aria-label="Page navigation">
-        <ul class="pagination">
-          {% if medicamentos.has_previous %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ medicamentos.previous_page_number }}&q={{ query }}">Anterior</a>
-          </li>
-          {% endif %}
-          {% for page_num in medicamentos.paginator.page_range %}
-          <li class="page-item {% if medicamentos.number == page_num %}active{% endif %}">
-            <a class="page-link" href="?page={{ page_num }}&q={{ query }}">{{ page_num }}</a>
-          </li>
-          {% endfor %}
-          {% if medicamentos.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ medicamentos.next_page_number }}&q={{ query }}">Siguiente</a>
-          </li>
-          {% endif %}
-        </ul>
-      </nav>
     </div>
   </div>
 </div>

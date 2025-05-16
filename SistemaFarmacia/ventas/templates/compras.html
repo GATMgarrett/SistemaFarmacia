@@ -2,74 +2,96 @@
 {% load static %}
 
 {% block content %}
-<div>
+<div class="container-fluid">
     <br>
-    <!-- Formulario de búsqueda -->
-    <form method="GET" class="mb-3">
-        <div class="input-group">
-            <input type="text" name="q" class="form-control" placeholder="Buscar por proveedor" value="{{ query|default:'' }}">
-            <button class="btn btn-primary" type="submit">Buscar</button>
-        </div>
-    </form>
 
-    <div class="card">
-        <div class="card-body">
-            <h4 class="card-title">Panel de Compras</h4>
-            <p class="card-text">Listado de Compras</p>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID Compra</th>
-                        <th>Proveedor</th>
-                        <th>Fecha</th>
-                        <th>Total (Bs)</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for compra in compras %}
-                    <tr>
-                        <td>{{ compra.id }}</td>
-                        <td>{{ compra.proveedor.nombre_empresa }}</td>
-                        <td>{{ compra.fecha_compra }}</td>
-                        <td>{{ compra.precio_total|floatformat:2 }}</td>
-                        <td>
-                            <a href="{% url 'detalle_compra' compra.id %}" class="btn btn-primary btn-sm">Ver Detalle</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">No se encontraron compras registradas.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- Tabla de Compras -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-shopping-cart mr-2"></i>Registro de Compras
+            </h4>
+            <span class="badge bg-light text-dark">
+                {{ compras.paginator.count }} registros
+            </span>
         </div>
-        <div class="card-footer text-muted">
-            <a class="btn btn-success" href="{% url 'CreateCompra' %}" role="button">Registrar Nueva Compra</a>
-            <a class="btn btn-info" href="{% url 'export_compras_excel' %}" role="button">Exportar a Excel</a>
+        
+        <div class="card-body">
+            <!-- Formulario de búsqueda -->
+            <form method="GET" class="mb-3">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Buscar por proveedor" value="{{ query|default:'' }}">
+                    <button class="btn btn-outline-primary" type="submit">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>ID Compra</th>
+                            <th>Proveedor</th>
+                            <th>Fecha</th>
+                            <th>Total (Bs)</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for compra in compras %}
+                        <tr>
+                            <td>{{ compra.id }}</td>
+                            <td>{{ compra.proveedor.nombre_empresa }}</td>
+                            <td>{{ compra.fecha_compra }}</td>
+                            <td>{{ compra.precio_total|floatformat:2 }}</td>
+                            <td>
+                                <a href="{% url 'detalle_compra' compra.id %}" 
+                                   class="btn btn-sm btn-outline-info" 
+                                   title="Ver detalle">
+                                    <i class="fas fa-eye"></i> Detalle
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No se encontraron compras registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination">
+                <span class="step-links">
+                    {% if compras.has_previous %}
+                        <a href="?q={{ query }}&page=1">&laquo; Primero</a>
+                        <a href="?q={{ query }}&page={{ compras.previous_page_number }}">Anterior</a>
+                    {% endif %}
+
+                    <span class="current">
+                        Página {{ compras.number }} de {{ compras.paginator.num_pages }}.
+                    </span>
+
+                    {% if compras.has_next %}
+                        <a href="?q={{ query }}&page={{ compras.next_page_number }}">Siguiente</a>
+                        <a href="?q={{ query }}&page={{ compras.paginator.num_pages }}">Último &raquo;</a>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <div class="d-flex justify-content-between">
+                <a class="btn btn-success" href="{% url 'CreateCompra' %}">
+                    <i class="fas fa-plus-circle mr-2"></i>Registrar Nueva Compra
+                </a>
+                <a class="btn btn-info" href="{% url 'export_compras_excel' %}">
+                    <i class="fas fa-file-excel mr-2"></i>Exportar a Excel
+                </a>
+            </div>
         </div>
     </div>
-
-    <!-- Navegación de páginas -->
-    <nav class="mt-3">
-        <ul class="pagination justify-content-center">
-            {% if compras.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?q={{ query }}&page={{ compras.previous_page_number }}">Anterior</a>
-            </li>
-            {% endif %}
-            {% for num in compras.paginator.page_range %}
-            <li class="page-item {% if compras.number == num %}active{% endif %}">
-                <a class="page-link" href="?q={{ query }}&page={{ num }}">{{ num }}</a>
-            </li>
-            {% endfor %}
-            {% if compras.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?q={{ query }}&page={{ compras.next_page_number }}">Siguiente</a>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
 </div>
 {% endblock %}

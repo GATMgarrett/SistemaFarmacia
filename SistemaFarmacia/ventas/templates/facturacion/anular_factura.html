@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <br>
+
+    <!-- Card principal -->
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-ban mr-2"></i> Anular Factura
+            </h4>
+            <span class="badge bg-light text-dark">
+                Factura #{{ factura.numero_factura }}
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <!-- Mensaje de advertencia -->
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i> 
+                <strong>¡Atención!</strong> Está a punto de anular la factura #{{ factura.numero_factura }} a nombre de {{ factura.cliente.nombre }}. 
+                Esta acción no se puede deshacer.
+            </div>
+            
+            <!-- Información de la factura -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Datos de la Factura</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Número de Factura:</strong> {{ factura.numero_factura }}</p>
+                            <p><strong>Fecha de Emisión:</strong> {{ factura.fecha_emision|date:"d/m/Y H:i" }}</p>
+                            <p><strong>Cliente:</strong> {{ factura.cliente.nombre }}</p>
+                            <p><strong>NIT/CI:</strong> {{ factura.cliente.nit_ci }}</p>
+                            <p><strong>Monto Total:</strong> {{ factura.monto_total }} Bs</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de confirmación -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Confirmación</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="confirmacion" class="form-label">Para confirmar, escriba "ANULAR"</label>
+                                    <input type="text" class="form-control" id="confirmacion" name="confirmacion" required>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-ban mr-2"></i> Anular Factura
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer del card -->
+        <div class="card-footer">
+            <a href="{% url 'detalle_factura' factura.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Cancelar y Volver
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Validar que el texto de confirmación sea exactamente "ANULAR"
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(event) {
+            const confirmacion = document.getElementById('confirmacion').value;
+            if (confirmacion !== 'ANULAR') {
+                event.preventDefault();
+                alert('Para anular la factura debe escribir exactamente "ANULAR"');
+            }
+        });
+    });
+</script>
+{% endblock %}

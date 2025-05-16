@@ -2,138 +2,339 @@
 {% load static %}
 
 {% block content %}
-<div class="container">
-    <h2>Registrar Nueva Venta</h2>
+<div class="container-fluid">
+    <br>
 
-    <!-- Mostrar mensajes de error o éxito -->
-    {% if messages %}
-    <div>
-        {% for message in messages %}
-        <div class="alert {{ message.tags|default:"info" }}">
-            <p>{{ message }}</p>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Si el carrito está vacío, mostrar un mensaje de advertencia -->
-    {% if not productos_carrito %}
-    <div class="alert alert-warning" role="alert">
-        Tu carrito está vacío. Agrega productos para realizar una venta.
-    </div>
-    {% endif %}
-
-    <!-- Búsqueda y lista de medicamentos disponibles -->
+    <!-- Card Principal - Registro de Nueva Venta -->
     <div class="card mb-4">
-        <div class="card-header">
-            Medicamentos Disponibles
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-shopping-cart mr-2"></i> Registro de Nueva Venta
+            </h4>
         </div>
         <div class="card-body">
-            <!-- Formulario de búsqueda -->
-            <form method="GET" class="mb-3">
-                <div class="input-group">
-                    <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Buscar medicamento...">
-                    <button type="submit" class="btn btn-primary">Buscar</button>
+            <!-- Mensajes del sistema -->
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            </form>
+                {% endfor %}
+            </div>
+            {% endif %}
 
-            <!-- Tabla de medicamentos -->
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Precio de Venta</th>
-                        <th>Stock</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for medicamento in medicamentos %}
-                    <tr>
-                        <td>{{ medicamento.nombre }}</td>
-                        <td>{{ medicamento.precio_venta_lote }} bs</td> <!-- Mostrar el precio de venta del lote -->
-                        <td>{{ medicamento.stock }}</td>
-                        <td>
-                            <form method="POST" action="{% url 'add_to_cart' medicamento.id %}">
+            <!-- Layout de dos columnas -->
+            <div class="row">
+                <!-- Sección: Lotes de Medicamentos Disponibles -->
+                <div class="col-lg-7 mb-4">
+                    <h5 class="bg-primary text-white p-2 rounded d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-pills mr-2"></i> Lotes de Medicamentos Disponibles</span>
+                        <span class="badge bg-light text-dark">
+                            {{ lotes_medicamentos.paginator.count }} lotes
+                        </span>
+                    </h5>
+                    
+                    <!-- Formulario de búsqueda -->
+                    <form method="GET" class="mb-3">
+                        <div class="input-group">
+                            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Buscar por nombre o lote fabricante...">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                        <small class="text-muted">El sistema vende lotes específicos, cada uno con su propia fecha de vencimiento.</small>
+                    </form>
+
+                    <!-- Tabla de lotes de medicamentos -->
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>Medicamento</th>
+                                    <th>Lote ID</th>
+                                    <th>Lote Fabricante</th>
+                                    <th>Fecha Vencimiento</th>
+                                    <th>Precio Venta</th>
+                                    <th>Cantidad</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lote in lotes_medicamentos %}
+                                <tr class="{% if lote.fecha_vencimiento|date:'Y-m-d' < now|date:'Y-m-d' %}table-danger{% endif %}">
+                                    <td>{{ lote.medicamento.nombre }}</td>
+                                    <td><span class="badge bg-info">{{ lote.id }}</span></td>
+                                    <td>
+                                        {% if lote.lote_fabricante %}
+                                            {{ lote.lote_fabricante }}
+                                        {% else %}
+                                            <span class="text-muted">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if lote.fecha_vencimiento %}
+                                            <span class="{% if lote.fecha_vencimiento|date:'Y-m-d' < now|date:'Y-m-d' %}text-danger{% elif lote.fecha_vencimiento|timesince:'30 days'|length < 8 %}text-warning{% else %}text-success{% endif %}">
+                                                {{ lote.fecha_vencimiento|date:"d/m/Y" }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ lote.precio_venta }} Bs</td>
+                                    <td>
+                                        {% if lote.cantidad > 10 %}
+                                        <span class="badge bg-success">{{ lote.cantidad }}</span>
+                                        {% elif lote.cantidad > 5 %}
+                                        <span class="badge bg-warning text-dark">{{ lote.cantidad }}</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">{{ lote.cantidad }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{% url 'add_to_cart' lote.id %}" class="d-flex">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="lote_id" value="{{ lote.id }}">
+                                            <input type="number" name="cantidad" min="1" max="{{ lote.cantidad }}" value="1" class="form-control form-control-sm me-2" style="width: 60px;" required>
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-cart-plus"></i>
+                                            </button>
+                                        </form>             
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i> No se encontraron lotes de medicamentos disponibles.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginación -->
+                    <div class="d-flex justify-content-center mt-3">
+                        <nav aria-label="Navegación de páginas">
+                            <ul class="pagination pagination-sm">
+                                {% if lotes_medicamentos.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1&q={{ query }}" aria-label="Primera">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ lotes_medicamentos.previous_page_number }}&q={{ query }}" aria-label="Anterior">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for page_num in lotes_medicamentos.paginator.page_range %}
+                                    {% if page_num > lotes_medicamentos.number|add:-3 and page_num < lotes_medicamentos.number|add:3 %}
+                                    <li class="page-item {% if lotes_medicamentos.number == page_num %}active{% endif %}">
+                                        <a class="page-link" href="?page={{ page_num }}&q={{ query }}">{{ page_num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if lotes_medicamentos.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ lotes_medicamentos.next_page_number }}&q={{ query }}" aria-label="Siguiente">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ lotes_medicamentos.paginator.num_pages }}&q={{ query }}" aria-label="Última">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Sección: Carrito de Compra -->
+                <div class="col-lg-5 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0"><i class="fas fa-shopping-cart mr-2"></i> Resumen de Venta</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Formulario de confirmación de venta que incluye datos del cliente -->
+                            <form method="POST" action="{% url 'confirmar_venta' %}">
                                 {% csrf_token %}
-                                <input type="hidden" name="medicamento_id" value="{{ medicamento.id }}">
-                                <input type="number" name="cantidad" min="1" value="1" class="form-control d-inline-block" style="width: 80px;">
-                                <button type="submit" class="btn btn-primary">Agregar al carrito</button>
-                            </form>             
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center">No se encontraron medicamentos.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                
+                                <!-- Productos en el carrito -->
+                                <h6 class="border-bottom pb-2 mb-3">Productos en el Carrito</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-success">
+                                            <tr>
+                                                <th>Medicamento</th>
+                                                <th>Lote ID</th>
+                                                <th>Cant.</th>
+                                                <th>Subtotal</th>
+                                                <th>Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in productos_carrito %}
+                                            <tr>
+                                                <td>{{ item.medicamento.nombre }}</td>
+                                                <td><span class="badge bg-info">{{ item.lote_id }}</span></td>
+                                                <td>{{ item.cantidad }}</td>
+                                                <td>{{ item.subtotal }} Bs</td>
+                                                <td>
+                                                    <!-- Botón para quitar del carrito -->
+                                                    <form method="POST" action="{% url 'remove_from_cart' item.lote_id %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="lote_id" value="{{ item.lote_id }}">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center">
+                                                    <div class="text-muted">
+                                                        <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                                        <p>No hay productos en el carrito</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="3" class="text-end fw-bold">Total:</td>
+                                                <td class="fw-bold">{{ total_carrito }} Bs</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                
+                                <!-- Datos del cliente -->
+                                <div class="card mb-3">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0">Datos del Cliente</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <!-- NIT/CI con búsqueda -->
+                                            <div class="col-md-6 mb-3">
+                                                <label for="nit_ci" class="form-label">NIT/CI:</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="nit_ci" name="nit_ci" class="form-control" required>
+                                                    <button type="button" id="buscarCliente" class="btn btn-outline-primary">
+                                                        <i class="fas fa-search"></i>
+                                                    </button>
+                                                </div>
+                                                <div id="mensajeCliente" class="form-text mt-1"></div>
+                                            </div>
+                                            
+                                            <!-- Nombre del cliente -->
+                                            <div class="col-md-6 mb-3">
+                                                <label for="nombre_cliente" class="form-label">Nombre:</label>
+                                                <input type="text" id="nombre_cliente" name="nombre_cliente" class="form-control" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-            <!-- Paginación -->
-            <nav aria-label="Page navigation">
-                <ul class="pagination">
-                    {% if medicamentos.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ medicamentos.previous_page_number }}&q={{ query }}">Anterior</a>
-                    </li>
-                    {% endif %}
-                    {% for page_num in medicamentos.paginator.page_range %}
-                    <li class="page-item {% if medicamentos.number == page_num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ page_num }}&q={{ query }}">{{ page_num }}</a>
-                    </li>
-                    {% endfor %}
-                    {% if medicamentos.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ medicamentos.next_page_number }}&q={{ query }}">Siguiente</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-    </div>
-
-    <!-- Carrito de compra actual -->
-    <div class="card mb-4">
-        <div class="card-header">
-            Productos en el Carrito
-        </div>
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Medicamento</th>
-                        <th>Cantidad</th>
-                        <th>Subtotal</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in productos_carrito %}
-                    <tr>
-                        <td>{{ item.medicamento.nombre }}</td>
-                        <td>{{ item.cantidad }}</td>
-                        <td>{{ item.subtotal }} bs</td>
-                        <td>
-                            <!-- Botón para quitar del carrito -->
-                            <form method="POST" action="{% url 'remove_from_cart' item.medicamento.id %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger">Quitar</button>
+                                <!-- Botón de confirmación -->
+                                <div class="d-grid gap-2 mt-4">
+                                    <button type="submit" class="btn btn-success btn-lg {% if not productos_carrito %}disabled{% endif %}">
+                                        <i class="fas fa-check-circle mr-2"></i> Confirmar Venta
+                                    </button>
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="generarFactura" name="generar_factura" checked>
+                                        <label class="form-check-label" for="generarFactura">
+                                            Generar factura automáticamente
+                                        </label>
+                                    </div>
+                                </div>
                             </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <h5>Total: {{ total_carrito }} bs</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <!-- Botón de confirmación de venta -->
-        <div class="card-footer">
-            <form method="POST">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success" {% if not productos_carrito %}disabled{% endif %}>Realizar Venta</button>
-            </form>
+        
+        <!-- Footer del card principal -->
+        <div class="card-footer d-flex justify-content-start align-items-center">
+            <a href="{% url 'Ventas' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al listado
+            </a>
         </div>
     </div>
 </div>
+
+<!-- JavaScript para la búsqueda de clientes -->
+<script>
+    $(document).ready(function() {
+        // Script para buscar medicamentos
+        $('#buscarMedicamento').click(function() {
+            var query = $('#query').val();
+            if (query) {
+                window.location.href = "{% url 'CreateVenta' %}?query=" + encodeURIComponent(query);
+            }
+        });
+
+        // Buscar al presionar Enter en el campo de búsqueda
+        $('#query').keypress(function(e) {
+            if (e.which == 13) { // Enter key
+                var query = $(this).val();
+                if (query) {
+                    window.location.href = "{% url 'CreateVenta' %}?query=" + encodeURIComponent(query);
+                }
+                return false;
+            }
+        });
+        
+        // Script para buscar clientes por NIT/CI
+        $('#buscarCliente').click(function() {
+            var nit_ci = $('#nit_ci').val().trim();
+            if (nit_ci) {
+                $('#mensajeCliente').html('<small class="text-info"><i class="fas fa-spinner fa-spin"></i> Buscando cliente...</small>');
+                
+                $.ajax({
+                    url: "{% url 'buscar_cliente_view' %}",
+                    data: { 'nit_ci': nit_ci },
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.encontrado) {
+                            $('#nombre_cliente').val(data.cliente.nombre);
+                            $('#mensajeCliente').html('<small class="text-success"><i class="fas fa-check-circle"></i> Cliente encontrado</small>');
+                        } else {
+                            // Cliente no encontrado, limpiar campos y permitir ingreso de nuevo cliente
+                            $('#nombre_cliente').val('').prop('readonly', false);
+                            $('#mensajeCliente').html('<small class="text-warning"><i class="fas fa-exclamation-circle"></i> Cliente no encontrado. Por favor ingrese los datos.</small>');
+                        }
+                    },
+                    error: function() {
+                        $('#mensajeCliente').html('<small class="text-danger"><i class="fas fa-times-circle"></i> Error al buscar el cliente</small>');
+                    }
+                });
+            }
+        });
+        
+        // Buscar cliente al presionar Enter en el campo NIT/CI
+        $('#nit_ci').keypress(function(e) {
+            if (e.which == 13) { // Enter key
+                $('#buscarCliente').click();
+                return false;
+            }
+        });
+    });
+
+    
+</script>
 {% endblock %}

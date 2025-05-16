@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <br>
+
+    <!-- Card principal -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-file-invoice mr-2"></i> Detalle de Factura
+            </h4>
+            <span class="badge bg-light text-dark">
+                Factura #{{ factura.numero_factura }}
+            </span>
+        </div>
+        
+        <div class="card-body">
+            <!-- Mensajes del sistema -->
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Información de la factura -->
+            <div class="row mb-4">
+                <!-- Datos de la empresa -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Datos de la Empresa</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Nombre:</strong> FARMACIA YASNEY</p>
+                            <p><strong>NIT:</strong> {{ factura.nit_empresa }}</p>
+                            <p><strong>Autorización:</strong> {{ factura.codigo_autorizacion }}</p>
+                            <p><strong>Código de Control:</strong> {{ factura.codigo_control }}</p>
+                            <p><strong>Fecha Límite Emisión:</strong> {{ factura.fecha_limite_emision|date:"d/m/Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Datos del cliente -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Datos del Cliente</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Nombre/Razón Social:</strong> {{ factura.cliente.nombre }}</p>
+                            <p><strong>NIT/CI:</strong> {{ factura.cliente.nit_ci }}</p>
+                            {% if factura.cliente.telefono %}
+                            <p><strong>Teléfono:</strong> {{ factura.cliente.telefono }}</p>
+                            {% endif %}
+                            <p><strong>Fecha Emisión:</strong> {{ factura.fecha_emision|date:"d/m/Y H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalle de productos -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Detalle de Productos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Producto</th>
+                                    <th>Precio Unitario</th>
+                                    <th>Cantidad</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for detalle in detalles %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ detalle.medicamento.nombre }}</td>
+                                    <td>{{ detalle.precio }} Bs</td>
+                                    <td>{{ detalle.cantidad }}</td>
+                                    <td>{{ detalle.precio|floatformat:2 }} Bs</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No hay productos en esta factura.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">Total:</td>
+                                    <td class="fw-bold">{{ factura.monto_total }} Bs</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer con botones de acción -->
+        <div class="card-footer d-flex justify-content-between">
+            <a href="{% url 'facturas' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Listado
+            </a>
+            <div>
+                <a href="{% url 'imprimir_factura' factura.id %}" class="btn btn-success">
+                    <i class="fas fa-print"></i> Imprimir Factura
+                </a>
+                {% if factura.activo %}
+                <a href="{% url 'anular_factura' factura.id %}" class="btn btn-danger">
+                    <i class="fas fa-ban"></i> Anular Factura
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

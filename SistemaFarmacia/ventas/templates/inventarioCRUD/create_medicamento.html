@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 {% load static %}
+
 {% block content %}
-<div>
+<div class="container-fluid">
     <br>
     <div class="card">
-        <div class="card-header">
-            Registrar nuevo medicamento
+        <div class="card-header bg-primary text-white">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-pills mr-2"></i>Registrar Nuevo Medicamento
+            </h4>
         </div>
         <div class="card-body">
-            <h4 class="card-title">Datos del medicamento</h4>
-            <p class="card-text">Por favor ingrese los datos del medicamento a registrar.</p>
+            <p class="card-text text-muted mb-4">Complete los datos del medicamento. Recuerde que el precio, fecha de vencimiento y stock se asignarán al registrar la compra.</p>
             {% include "inventarioCRUD/form_medicamento.html" %}
         </div>
     </div>
