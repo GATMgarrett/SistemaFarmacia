@@ -417,7 +417,7 @@ def dashboard_view_ventas(request):
     grafico_barras_html = generar_grafico_barras(df_ventas)
 
     # Obtener el gráfico de predicciones de ventas
-    grafico_predicciones_html = obtener_grafico_predicciones()
+    #grafico_predicciones_html = obtener_grafico_predicciones()
     grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     # Pasar los datos y gráficos al contexto
@@ -425,7 +425,7 @@ def dashboard_view_ventas(request):
         'df_ventas': df_ventas.to_dict(orient='records'),  # Datos históricos de ventas
         'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
         'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
-        'grafico_predicciones_html': grafico_predicciones_html,  # Gráfico de predicciones
+        #'grafico_predicciones_html': grafico_predicciones_html,  # Gráfico de predicciones
         'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
         
     }
@@ -506,24 +506,34 @@ def generar_grafico_barras_stock_minimo(alertas_stock_minimo):
     stock_actual = [alerta['stock_actual'] for alerta in alertas_stock_minimo]
     umbrales = [alerta['umbral'] for alerta in alertas_stock_minimo]
 
+    # Crear un DataFrame para evitar el error
+    import pandas as pd
+    df = pd.DataFrame({
+        'Medicamento': nombres,
+        'Stock Actual': stock_actual,
+        'Umbral': umbrales
+    })
+
     # Crear el gráfico
     fig = px.bar(
-        x=stock_actual,
-        y=nombres,
-        orientation='h',  # Barras horizontales
-        text=stock_actual,  # Mostrar valores sobre las barras
+        df,
+        x='Stock Actual',
+        y='Medicamento',
+        orientation='h',
+        text='Stock Actual',
         title='Medicamentos con Stock por Debajo del Umbral',
-        labels={'x': 'Stock Actual', 'y': 'Medicamentos'}
+        labels={'Stock Actual': 'Stock Actual', 'Medicamento': 'Medicamentos'}
     )
     
-    # Añadir línea de umbral
-    fig.add_scatter(
-        x=umbrales,
-        y=nombres,
-        mode='lines',
-        name='Umbral',
-        line=dict(color='red', dash='dash')
-    )
+    # Añadir línea de umbral (usando el DataFrame)
+    for i, row in df.iterrows():
+        fig.add_vline(
+            x=row['Umbral'], 
+            line_dash="dash", 
+            line_color="red",
+            annotation_text=f"Umbral: {row['Umbral']}",
+            annotation_position="top right"
+        )
     
     # Configuración adicional
     fig.update_layout(template='plotly_white', showlegend=True)
@@ -864,7 +874,7 @@ def add_to_cart(request, lote_id):
         
         # Obtener carrito actual
         carrito = request.session.get('carrito', [])
-        
+
         # Verificar si el lote ya está en el carrito
         item_exists = False
         for item in carrito:
@@ -1017,13 +1027,24 @@ def create_compra_view(request):
     for item in carrito_compra:
         item['subtotal'] = item['precio_unitario'] * item['cantidad']
 
-    return render(request, 'comprasCRUD/create_compra.html', {
-        'proveedores': proveedores,
-        'medicamentos': medicamentos,
-        'productos_compra_carrito': carrito_compra,
-        'total_compra': sum(item['precio_unitario'] * item['cantidad'] for item in carrito_compra),
-        'query': query,  # Para mantener el término de búsqueda en el formulario
-    })
+    # Verificar si es una solicitud AJAX
+    is_ajax_request = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    
+    # Para solicitudes AJAX, solo renderizar la parte de resultados
+    if is_ajax_request:
+        return render(request, 'comprasCRUD/create_compra.html', {
+            'medicamentos': medicamentos,
+            'query': query,
+        })
+    # Para solicitudes normales, renderizar la página completa
+    else:
+        return render(request, 'comprasCRUD/create_compra.html', {
+            'proveedores': proveedores,
+            'medicamentos': medicamentos,
+            'productos_compra_carrito': carrito_compra,
+            'total_compra': sum(item['precio_unitario'] * item['cantidad'] for item in carrito_compra),
+            'query': query,  # Para mantener el término de búsqueda en el formulario
+        })
 
 @require_POST
 def add_to_cart_compra(request, medicamento_id):
@@ -1378,7 +1399,7 @@ def confirmar_venta(request):
                 }
             )
             
-            # Si el cliente existe pero los datos son diferentes, actualizarlos
+            # Si el cliente existe pero algunos datos son diferentes, actualizarlos
             if not created:
                 cliente.nombre = nombre_cliente  # Actualizar nombre si cambió
                 if telefono:
@@ -1393,7 +1414,7 @@ def confirmar_venta(request):
                 monto_total=venta.precio_total,
                 fecha_limite_emision=fecha_limite
             )
-            factura.save()
+            factura.save()  # Esto generará automáticamente el número de factura
             
             messages.success(request, f"Venta registrada y factura #{factura.numero_factura} generada exitosamente.")
             return redirect('detalle_factura', factura_id=factura.id)

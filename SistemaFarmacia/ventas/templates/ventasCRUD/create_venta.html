@@ -37,18 +37,24 @@
                     </h5>
                     
                     <!-- Formulario de búsqueda -->
-                    <form method="GET" class="mb-3">
+                    <form method="GET" class="mb-3" id="searchForm">
                         <div class="input-group">
-                            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Buscar por nombre o lote fabricante...">
-                            <button type="submit" class="btn btn-outline-primary">
-                                <i class="fas fa-search"></i> Buscar
-                            </button>
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            </div>
+                            <input type="text" name="q" id="searchInput" value="{{ query }}" class="form-control" 
+                                   placeholder="Buscar medicamento por nombre o lote..." autocomplete="off">
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    Buscar
+                                </button>
+                            </div>
                         </div>
-                        <small class="text-muted">El sistema vende lotes específicos, cada uno con su propia fecha de vencimiento.</small>
+                        <small class="text-muted mt-1 d-block">Escriba para buscar automáticamente o presione Enter para buscar</small>
                     </form>
 
                     <!-- Tabla de lotes de medicamentos -->
-                    <div class="table-responsive">
+                    <div class="table-responsive" id="medicamentos-table">
                         <table class="table table-hover table-striped">
                             <thead class="table-primary">
                                 <tr>
@@ -165,61 +171,62 @@
                             <h5 class="mb-0"><i class="fas fa-shopping-cart mr-2"></i> Resumen de Venta</h5>
                         </div>
                         <div class="card-body">
-                            <!-- Formulario de confirmación de venta que incluye datos del cliente -->
-                            <form method="POST" action="{% url 'confirmar_venta' %}">
+                            <!-- Productos en el carrito -->
+                            <h6 class="border-bottom pb-2 mb-3">Productos en el Carrito</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="carrito-table">
+                                    <thead class="table-success">
+                                        <tr>
+                                            <th>Medicamento</th>
+                                            <th>Lote ID</th>
+                                            <th>Cant.</th>
+                                            <th>Subtotal</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in productos_carrito %}
+                                        <tr>
+                                            <td>{{ item.medicamento.nombre }}</td>
+                                            <td><span class="badge bg-info">{{ item.lote_id }}</span></td>
+                                            <td>{{ item.cantidad }}</td>
+                                            <td>{{ item.subtotal }} Bs</td>
+                                            <td>
+                                                <!-- Botón para quitar del carrito - FUERA del formulario principal -->
+                                                <form method="POST" action="{% url 'remove_from_cart' item.lote_id %}" class="remove-item-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="text-center">
+                                                <div class="text-muted">
+                                                    <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                                    <p>No hay productos en el carrito</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-end fw-bold">Total:</td>
+                                            <td class="fw-bold">{{ total_carrito }} Bs</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            
+                            <!-- Formulario de confirmación de venta - SEPARADO de las acciones del carrito -->
+                            {% if productos_carrito %}
+                            <form method="POST" action="{% url 'confirmar_venta' %}" id="form-confirmar-venta">
                                 {% csrf_token %}
-                                
-                                <!-- Productos en el carrito -->
-                                <h6 class="border-bottom pb-2 mb-3">Productos en el Carrito</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-success">
-                                            <tr>
-                                                <th>Medicamento</th>
-                                                <th>Lote ID</th>
-                                                <th>Cant.</th>
-                                                <th>Subtotal</th>
-                                                <th>Acción</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for item in productos_carrito %}
-                                            <tr>
-                                                <td>{{ item.medicamento.nombre }}</td>
-                                                <td><span class="badge bg-info">{{ item.lote_id }}</span></td>
-                                                <td>{{ item.cantidad }}</td>
-                                                <td>{{ item.subtotal }} Bs</td>
-                                                <td>
-                                                    <!-- Botón para quitar del carrito -->
-                                                    <form method="POST" action="{% url 'remove_from_cart' item.lote_id %}">
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="lote_id" value="{{ item.lote_id }}">
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                            <i class="fas fa-trash-alt"></i>
-                                                        </button>
-                                                    </form>
-                                                </td>
-                                            </tr>
-                                            {% empty %}
-                                            <tr>
-                                                <td colspan="5" class="text-center">
-                                                    <div class="text-muted">
-                                                        <i class="fas fa-shopping-cart fa-2x mb-2"></i>
-                                                        <p>No hay productos en el carrito</p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colspan="3" class="text-end fw-bold">Total:</td>
-                                                <td class="fw-bold">{{ total_carrito }} Bs</td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
                                 
                                 <!-- Datos del cliente -->
                                 <div class="card mb-3">
@@ -251,7 +258,7 @@
 
                                 <!-- Botón de confirmación -->
                                 <div class="d-grid gap-2 mt-4">
-                                    <button type="submit" class="btn btn-success btn-lg {% if not productos_carrito %}disabled{% endif %}">
+                                    <button type="submit" class="btn btn-success btn-lg">
                                         <i class="fas fa-check-circle mr-2"></i> Confirmar Venta
                                     </button>
                                     <div class="form-check mt-2">
@@ -262,6 +269,11 @@
                                     </div>
                                 </div>
                             </form>
+                            {% else %}
+                            <div class="alert alert-info mt-4">
+                                <i class="fas fa-info-circle me-2"></i> Agregue productos al carrito para realizar una venta.
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -277,64 +289,260 @@
     </div>
 </div>
 
-<!-- JavaScript para la búsqueda de clientes -->
+<!-- JavaScript para la búsqueda dinámica -->
 <script>
-    $(document).ready(function() {
-        // Script para buscar medicamentos
-        $('#buscarMedicamento').click(function() {
-            var query = $('#query').val();
-            if (query) {
-                window.location.href = "{% url 'CreateVenta' %}?query=" + encodeURIComponent(query);
-            }
-        });
-
-        // Buscar al presionar Enter en el campo de búsqueda
-        $('#query').keypress(function(e) {
-            if (e.which == 13) { // Enter key
-                var query = $(this).val();
-                if (query) {
-                    window.location.href = "{% url 'CreateVenta' %}?query=" + encodeURIComponent(query);
-                }
-                return false;
-            }
-        });
+$(document).ready(function() {
+    // Búsqueda interactiva
+    var searchTimer;
+    var lastQuery = '';
+    
+    $('#searchInput').on('input', function() {
+        var query = $(this).val().trim();
         
-        // Script para buscar clientes por NIT/CI
-        $('#buscarCliente').click(function() {
-            var nit_ci = $('#nit_ci').val().trim();
-            if (nit_ci) {
-                $('#mensajeCliente').html('<small class="text-info"><i class="fas fa-spinner fa-spin"></i> Buscando cliente...</small>');
+        // Evitar búsquedas innecesarias
+        if (query === lastQuery) return;
+        lastQuery = query;
+        
+        clearTimeout(searchTimer);
+        
+        // Mostrar indicador de escritura
+        if (query.length > 0) {
+            $(this).addClass('searching');
+        } else {
+            $(this).removeClass('searching');
+        }
+        
+        // Solo buscar si hay al menos 2 caracteres
+        if (query.length >= 2 || query.length === 0) {
+            searchTimer = setTimeout(function() {
+                // Mostrar animación de carga
+                $('#medicamentos-table').addClass('loading-results');
                 
+                // Cambiar la URL sin recargar la página
+                var url = new URL(window.location.href);
+                if (query) {
+                    url.searchParams.set('q', query);
+                } else {
+                    url.searchParams.delete('q');
+                }
+                url.searchParams.set('page', '1');
+                history.pushState({}, '', url);
+                
+                // Hacer la búsqueda
                 $.ajax({
-                    url: "{% url 'buscar_cliente_view' %}",
-                    data: { 'nit_ci': nit_ci },
-                    dataType: 'json',
+                    url: window.location.pathname,
+                    data: {
+                        'q': query,
+                        'page': 1
+                    },
                     success: function(data) {
-                        if (data.encontrado) {
-                            $('#nombre_cliente').val(data.cliente.nombre);
-                            $('#mensajeCliente').html('<small class="text-success"><i class="fas fa-check-circle"></i> Cliente encontrado</small>');
-                        } else {
-                            // Cliente no encontrado, limpiar campos y permitir ingreso de nuevo cliente
-                            $('#nombre_cliente').val('').prop('readonly', false);
-                            $('#mensajeCliente').html('<small class="text-warning"><i class="fas fa-exclamation-circle"></i> Cliente no encontrado. Por favor ingrese los datos.</small>');
-                        }
+                        // Extraer solo la tabla del resultado (más específico)
+                        var tableHtml = $(data).find('#medicamentos-table').html();
+                        $('#medicamentos-table').html(tableHtml);
+                        
+                        // Extraer y actualizar la paginación
+                        var paginationHtml = $(data).find('.pagination').parent().html();
+                        $('.pagination').parent().html(paginationHtml);
+                        
+                        // Remover indicador de carga
+                        $('#medicamentos-table').removeClass('loading-results');
                     },
                     error: function() {
-                        $('#mensajeCliente').html('<small class="text-danger"><i class="fas fa-times-circle"></i> Error al buscar el cliente</small>');
+                        alert('Error al buscar productos. Intente nuevamente.');
+                        $('#medicamentos-table').removeClass('loading-results');
                     }
                 });
+            }, 300); // 300ms de retraso para no sobrecargar el servidor
+        }
+    });
+    
+    // Manejar el formulario de búsqueda
+    $('#searchForm').on('submit', function(e) {
+        e.preventDefault();
+        $('#searchInput').trigger('input'); // Disparar la búsqueda
+    });
+    
+    // Manejar la paginación
+    $(document).on('click', '.pagination .page-link', function(e) {
+        e.preventDefault();
+        
+        // Extraer la página de la URL
+        var url = new URL($(this).attr('href'), window.location.origin);
+        var page = url.searchParams.get('page') || 1;
+        var query = $('#searchInput').val().trim();
+        
+        // Mostrar animación de carga
+        $('#medicamentos-table').addClass('loading-results');
+        
+        // Actualizar la URL
+        history.pushState({}, '', $(this).attr('href'));
+        
+        // Hacer la petición
+        $.ajax({
+            url: window.location.pathname,
+            data: {
+                'q': query,
+                'page': page
+            },
+            success: function(data) {
+                // Actualizar solo la tabla de medicamentos
+                var tableHtml = $(data).find('#medicamentos-table').html();
+                $('#medicamentos-table').html(tableHtml);
+                
+                // Actualizar la paginación
+                var paginationHtml = $(data).find('.pagination').parent().html();
+                $('.pagination').parent().html(paginationHtml);
+                
+                // Remover indicador de carga
+                $('#medicamentos-table').removeClass('loading-results');
+            },
+            error: function() {
+                alert('Error al cargar la página. Intente nuevamente.');
+                $('#medicamentos-table').removeClass('loading-results');
             }
         });
+    });
+    
+    // Manejar la eliminación de ítems del carrito con AJAX
+    $(document).on('submit', '.remove-item-form', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var button = form.find('button[type="submit"]');
         
-        // Buscar cliente al presionar Enter en el campo NIT/CI
-        $('#nit_ci').keypress(function(e) {
-            if (e.which == 13) { // Enter key
-                $('#buscarCliente').click();
-                return false;
+        // Deshabilitar el botón para evitar múltiples clics
+        button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        
+        $.ajax({
+            type: 'POST',
+            url: form.attr('action'),
+            data: form.serialize(),
+            success: function(response) {
+                // Recargar solo la sección de la tabla del carrito
+                $.ajax({
+                    url: window.location.pathname,
+                    success: function(data) {
+                        // Selección específica del carrito usando ID
+                        var carritoTable = $(data).find('#carrito-table');
+                        $('#carrito-table').replaceWith(carritoTable);
+                        
+                        // Actualizar el total del carrito con selectores más específicos
+                        var totalCarrito = $(data).find('#carrito-table tfoot .fw-bold:contains("Total:")').next().text();
+                        $('#carrito-table tfoot .fw-bold:contains("Total:")').next().text(totalCarrito);
+                        
+                        // Si el carrito está vacío, quitar el formulario de confirmación
+                        if ($(data).find('#carrito-table tbody tr').length <= 1) {
+                            $('#form-confirmar-venta').replaceWith('<div class="alert alert-info mt-4"><i class="fas fa-info-circle me-2"></i> Agregue productos al carrito para realizar una venta.</div>');
+                        }
+                        
+                        // Mostrar mensaje de éxito
+                        $('<div class="alert alert-success alert-dismissible fade show mt-2">')
+                            .html('<button type="button" class="btn-close" data-bs-dismiss="alert"></button>Producto eliminado del carrito')
+                            .insertAfter('#carrito-table')
+                            .delay(3000)
+                            .fadeOut(function() { $(this).remove(); });
+                        
+                        // Restaurar el botón
+                        button.prop('disabled', false).html('<i class="fas fa-trash-alt"></i>');
+                    },
+                    error: function() {
+                        alert('Error al actualizar el carrito');
+                        button.prop('disabled', false).html('<i class="fas fa-trash-alt"></i>');
+                    }
+                });
+            },
+            error: function() {
+                alert('Error al eliminar el producto del carrito');
+                button.prop('disabled', false).html('<i class="fas fa-trash-alt"></i>');
             }
         });
     });
 
+    // También agregar evento para prevenir envío accidental del formulario de venta
+    $(document).on('submit', '#form-confirmar-venta', function(e) {
+        if (!confirm('¿Está seguro de confirmar esta venta?')) {
+            e.preventDefault();
+        }
+    });
+
+    // Script para buscar clientes por NIT/CI
+    $('#buscarCliente').click(function() {
+        var nit_ci = $('#nit_ci').val().trim();
+        if (nit_ci) {
+            $('#mensajeCliente').html('<small class="text-info"><i class="fas fa-spinner fa-spin"></i> Buscando cliente...</small>');
+            
+            $.ajax({
+                url: "{% url 'buscar_cliente_view' %}",
+                data: { 'nit_ci': nit_ci },
+                dataType: 'json',
+                success: function(data) {
+                    if (data.encontrado) {
+                        $('#nombre_cliente').val(data.cliente.nombre);
+                        $('#mensajeCliente').html('<small class="text-success"><i class="fas fa-check-circle"></i> Cliente encontrado</small>');
+                    } else {
+                        // Cliente no encontrado, limpiar campos y permitir ingreso de nuevo cliente
+                        $('#nombre_cliente').val('').prop('readonly', false);
+                        $('#mensajeCliente').html('<small class="text-warning"><i class="fas fa-exclamation-circle"></i> Cliente no encontrado. Por favor ingrese los datos.</small>');
+                    }
+                },
+                error: function() {
+                    $('#mensajeCliente').html('<small class="text-danger"><i class="fas fa-times-circle"></i> Error al buscar el cliente</small>');
+                }
+            });
+        }
+    });
     
+    // Buscar cliente al presionar Enter en el campo NIT/CI
+    $('#nit_ci').keypress(function(e) {
+        if (e.which == 13) { // Enter key
+            e.preventDefault();
+            $('#buscarCliente').click();
+            return false;
+        }
+    });
+});
 </script>
+
+<!-- Estilos para indicadores de búsqueda -->
+<style>
+#searchInput.searching {
+    background-image: url('data:image/gif;base64,R0lGODlhEAAQAPIAAP///wAAAMLCwkJCQgAAAGJiYoKCgpKSkiH/C05FVFNDQVBFMi4wAwEAAAAh/hpDcmVhdGVkIHdpdGggYWpheGxvYWQuaW5mbwAh+QQJCgAAACwAAAAAEAAQAAADMwi63P4wyklrE2MIOggZnAdOmGYJRbExwroUmcG2LmDEwnHQLVsYOd2mBzkYDAdKa+dIAAAh+QQJCgAAACwAAAAAEAAQAAADNAi63P5OjCEgG4QMu7DmikRxQlFUYDEZIGBMRVsaqHwctXXf7WEYB4Ag1xjihkMZsiUkKhIAIfkECQoAAAAsAAAAABAAEAAAAzYIujIjK8pByJDMlFYvBoVjHA70GU7xSUJhmKtwHPAKzLO9HMaoKwJZ7Rf8AYPDDzKpZBqfvwQAIfkECQoAAAAsAAAAABAAEAAAAzMIumIlK8oyhpHsnFZfhYumCYUhDAQxRIdhHBGqRoKw0R8DYlJd8z0fMDgsGo/IpHI5TAAAIfkECQoAAAAsAAAAABAAEAAAAzIIunInK0rnZBTwGPNMgQwmdsNgXGJUlIWEuR5oWUIpz8pAEAMe6TwfwyYsGo/IpFKSAAAh+QQJCgAAACwAAAAAEAAQAAADMwi6IMKQORfjdOe82p4wGccc4CEuQradylesojEMBgsUc2G7sDX3lQGBMLAJibufbSlKAAAh+QQJCgAAACwAAAAAEAAQAAADMgi63P7wCRHZnFVdmgHu2nFwlWCI3WGc3TSWhUFGxTAUkGCbtgENBMJAEJsxgMLWzpEAACH5BAkKAAAALAAAAAAQABAAAAMyCLrc/jDKSatlQtScKdceCAjDII7HcQ4EMTCpyrCuUBjCYRgHVtqlAiB1YhiCnlsRkAAAOwAAAAAAAAAAAA==');
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+    padding-right: 35px;
+}
+
+#medicamentos-table.loading-results::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+#medicamentos-table.loading-results::before {
+    content: "Buscando...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 15px 25px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 11;
+    font-weight: bold;
+}
+
+#medicamentos-table {
+    position: relative;
+    min-height: 200px;
+}
+</style>
 {% endblock %}

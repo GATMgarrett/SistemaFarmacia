@@ -55,9 +55,8 @@
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     <a href="{% url 'DeleteUsuarios' usuario.id %}" 
-                                       class="btn btn-outline-danger"
-                                       title="Desactivar"
-                                       onclick="return confirmAction('desactivar')">
+                                       class="btn btn-desactivar btn-outline-danger"
+                                       title="Desactivar">
                                         <i class="fas fa-user-slash"></i>
                                     </a>
                                 </div>
@@ -118,9 +117,8 @@
                             </td>
                             <td>
                                 <a href="{% url 'ActivateUsuarios' usuario.id %}" 
-                                   class="btn btn-sm btn-success"
-                                   title="Reactivar"
-                                   onclick="return confirmAction('reactivar')">
+                                   class="btn btn-activar btn-sm btn-success"
+                                   title="Reactivar">
                                     <i class="fas fa-user-check mr-1"></i>Activar
                                 </a>
                             </td>
@@ -135,14 +133,30 @@
 
 <script>
 // Función reutilizable para confirmaciones
-function confirmAction(action) {
-    return confirm(`¿Confirmas que deseas ${action} este usuario?`);
+function confirmAction(action, url) {
+    showConfirmModal(`¿Confirmas que deseas ${action} este usuario?`, function() {
+        window.location.href = url;
+    });
+    return false; // Prevenir el comportamiento por defecto del enlace
 }
 
 // Event listeners para tooltips
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar tooltips de Bootstrap
     $('[title]').tooltip();
+    
+    // Asignar manejadores de eventos a los botones de desactivar/activar
+    $('.btn-desactivar').on('click', function(e) {
+        e.preventDefault();
+        var url = $(this).attr('href');
+        confirmAction('desactivar', url);
+    });
+    
+    $('.btn-activar').on('click', function(e) {
+        e.preventDefault();
+        var url = $(this).attr('href');
+        confirmAction('reactivar', url);
+    });
 });
 </script>
 {% endblock %}

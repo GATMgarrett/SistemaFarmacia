@@ -274,26 +274,68 @@
   <script src="{% static 'index/DataTables/Buttons-2.0.1/js/buttons.html5.min.js' %}"></script>
   <script src="{% static 'index/DataTables/Buttons-2.0.1/js/pdfmaker.min.js' %}"></script>
   <script type="text/javascript" charset="utf8" src="{% static 'index/js/main.js' %}"></script>
+
+  <!-- Modal de Confirmación Personalizado -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalLabel">Confirmar acción</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">
+          ¿Está seguro de realizar esta acción?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="confirmModalButton">Aceptar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script para manejar confirmaciones -->
+  <script>
+    // Variable global para almacenar la función de confirmación
+    var confirmCallback = null;
+    
+    // Función para mostrar el modal de confirmación
+    function showConfirmModal(message, callback) {
+      $('#confirmModalBody').text(message);
+      confirmCallback = callback;
+      $('#confirmModal').modal('show');
+    }
+    
+    // Manejar clic en el botón Aceptar del modal
+    $('#confirmModalButton').on('click', function() {
+      if (typeof confirmCallback === 'function') {
+        confirmCallback();
+      }
+      $('#confirmModal').modal('hide');
+    });
+  </script>
+
+  <!-- Agregar este código en la parte inferior de tu plantilla, antes de cerrar la etiqueta </body> -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
+    
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAO-jbPHYiHU2wEmDPDgAjnsl5YCz-AIGg",
+      authDomain: "sistemafarmacia-87e60.firebaseapp.com",
+      projectId: "sistemafarmacia-87e60",
+      storageBucket: "sistemafarmacia-87e60.firebasestorage.app",
+      messagingSenderId: "33840948655",
+      appId: "1:33840948655:web:ac0941dd49a8f11275bb5a",
+      measurementId: "G-Z3D6KR6JQQ"
+    };
+
+  </script>
+
 </body>
 
 </html>
-
-
-<!-- Agregar este código en la parte inferior de tu plantilla, antes de cerrar la etiqueta </body> -->
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
-  
-  // Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyAO-jbPHYiHU2wEmDPDgAjnsl5YCz-AIGg",
-    authDomain: "sistemafarmacia-87e60.firebaseapp.com",
-    projectId: "sistemafarmacia-87e60",
-    storageBucket: "sistemafarmacia-87e60.firebasestorage.app",
-    messagingSenderId: "33840948655",
-    appId: "1:33840948655:web:ac0941dd49a8f11275bb5a",
-    measurementId: "G-Z3D6KR6JQQ"
-  };
-
-</script>

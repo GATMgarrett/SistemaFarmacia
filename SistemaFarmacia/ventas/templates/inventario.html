@@ -182,16 +182,16 @@
 <script>
 // Función para confirmar desactivación
 function confirmarDesactivacion(id) {
-    if (confirm('¿Confirmas que deseas desactivar este medicamento?')) {
+    showConfirmModal('¿Confirmas que deseas desactivar este medicamento?', function() {
         window.location.href = "{% url 'DeleteMedicamentos' 0 %}".replace('0', id);
-    }
+    });
 }
 
 // Función para confirmar activación
 function confirmarActivacion(id) {
-    if (confirm('¿Confirmas que deseas reactivar este medicamento?')) {
+    showConfirmModal('¿Confirmas que deseas reactivar este medicamento?', function() {
         window.location.href = "{% url 'ActivateMedicamentos' 0 %}".replace('0', id);
-    }
+    });
 }
 
 // Event listeners para tooltips

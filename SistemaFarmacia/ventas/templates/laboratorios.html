@@ -173,16 +173,16 @@
 <script>
 // Función para confirmar desactivación
 function confirmarDesactivacion(id) {
-    if (confirm('¿Confirmas que deseas desactivar este laboratorio?')) {
+    showConfirmModal('¿Confirmas que deseas desactivar este laboratorio?', function() {
         window.location.href = "{% url 'DeleteLaboratorio' 0 %}".replace('0', id);
-    }
+    });
 }
 
 // Función para confirmar activación
 function confirmarActivacion(id) {
-    if (confirm('¿Confirmas que deseas reactivar este laboratorio?')) {
+    showConfirmModal('¿Confirmas que deseas reactivar este laboratorio?', function() {
         window.location.href = "{% url 'ActivateLaboratorio' 0 %}".replace('0', id);
-    }
+    });
 }
 
 // Event listeners para tooltips

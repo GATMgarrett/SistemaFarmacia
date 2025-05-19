@@ -149,16 +149,24 @@
 </div>
 
 <script>
+// Función para confirmar desactivación
 function confirmarDesactivacion(id) {
-    if (confirm('¿Está seguro de desactivar este proveedor?')) {
+    showConfirmModal('¿Está seguro de desactivar este proveedor?', function() {
         window.location.href = "{% url 'DeleteProveedores' 0 %}".replace('0', id);
-    }
+    });
 }
 
+// Función para confirmar activación
 function confirmarActivacion(id) {
-    if (confirm('¿Está seguro de reactivar este proveedor?')) {
+    showConfirmModal('¿Está seguro de reactivar este proveedor?', function() {
         window.location.href = "{% url 'ActivateProveedores' 0 %}".replace('0', id);
-    }
+    });
 }
+
+// Event listeners para tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips de Bootstrap
+    $('[title]').tooltip();
+});
 </script>
 {% endblock %}

@@ -33,120 +33,122 @@
           </div>
           <div class="card-body">
             <!-- Buscador de medicamentos -->
-            <form method="GET" class="mb-3">
+            <div class="mb-3">
               <div class="input-group">
-                <input type="text" name="q" value="{{ query|default:'' }}" class="form-control" placeholder="Buscar medicamento...">
-                <button type="submit" class="btn btn-outline-primary">
+                <input type="text" id="searchInput" class="form-control" placeholder="Buscar medicamento..." value="{{ query|default:'' }}">
+                <button type="button" id="searchButton" class="btn btn-outline-primary">
                   <i class="fas fa-search"></i> Buscar
                 </button>
               </div>
-              <small class="text-muted">Escriba el nombre del medicamento y presione el botón Buscar</small>
-            </form>
-
-            <!-- Tabla de medicamentos - Mantiene todos los campos visibles -->
-            <div class="table-responsive">
-              <table class="table table-hover table-striped">
-                <thead class="thead-dark">
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Cantidad</th>
-                    <th>Precio de Compra</th>
-                    <th>Precio de Venta</th>
-                    <th>Lote Fabricante</th>
-                    <th>Fecha de Producción</th>
-                    <th>Fecha de Vencimiento</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for medicamento in medicamentos %}
-                  <tr>
-                    <td>{{ medicamento.nombre }}</td>
-                    <!-- Formulario independiente para Agregar al carrito -->
-                    <form method="POST" action="{% url 'add_to_cart_compra' medicamento.id %}">
-                      {% csrf_token %}
-                      <td>
-                        <input type="number" name="cantidad" min="1" placeholder="Cantidad" value="1" class="form-control" required>
-                      </td>
-                      <td>
-                        <input type="number" step="0.01" name="precio_compra" placeholder="Precio" class="form-control" required>
-                      </td>
-                      <td>
-                        <input type="number" step="0.01" name="precio_venta" placeholder="Precio" class="form-control" required>
-                      </td>
-                      <td>
-                        <input type="text" name="lote_fabricante" placeholder="Lote" class="form-control" required>
-                      </td>
-                      <td>
-                        <input type="date" name="fecha_produccion" class="form-control" required>
-                      </td>
-                      <td>
-                        <input type="date" name="fecha_vencimiento" class="form-control" required>
-                      </td>
-                      <td>
-                        <button type="submit" class="btn btn-sm btn-success">
-                          <i class="fas fa-cart-plus mr-1"></i> Agregar
-                        </button>
-                      </td>
-                    </form>
-                  </tr>
-                  {% empty %}
-                  <tr>
-                    <td colspan="8" class="text-center py-3">
-                      {% if query %}
-                        <div class="alert alert-warning mb-0">
-                          <i class="fas fa-exclamation-triangle"></i> No se encontraron medicamentos con "{{ query }}"
-                        </div>
-                      {% else %}
-                        <div class="text-muted">
-                          <i class="fas fa-info-circle"></i> Utilice el buscador para encontrar medicamentos
-                        </div>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+              <small class="text-muted">Escribe para buscar automáticamente (mínimo 2 caracteres)</small>
             </div>
 
-            <!-- Paginación mejorada -->
-            {% if medicamentos.has_other_pages %}
-            <nav aria-label="Paginación" class="mt-3">
-              <ul class="pagination pagination-sm justify-content-center">
-                {% if medicamentos.has_previous %}
-                  <li class="page-item">
-                    <a class="page-link" href="?q={{ query|default:'' }}&page={{ medicamentos.previous_page_number }}">&laquo;</a>
-                  </li>
-                {% else %}
-                  <li class="page-item disabled">
-                    <span class="page-link">&laquo;</span>
-                  </li>
-                {% endif %}
-                
-                {% for i in medicamentos.paginator.page_range %}
-                  {% if medicamentos.number == i %}
-                    <li class="page-item active">
-                      <span class="page-link">{{ i }}</span>
+            <!-- Tabla de medicamentos - Mantiene todos los campos visibles -->
+            <div id="searchResultsContainer">
+              <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                  <thead class="thead-dark">
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Cantidad</th>
+                      <th>Precio de Compra</th>
+                      <th>Precio de Venta</th>
+                      <th>Lote Fabricante</th>
+                      <th>Fecha de Producción</th>
+                      <th>Fecha de Vencimiento</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for medicamento in medicamentos %}
+                    <tr>
+                      <td>{{ medicamento.nombre }}</td>
+                      <!-- Formulario independiente para Agregar al carrito -->
+                      <form method="POST" action="{% url 'add_to_cart_compra' medicamento.id %}">
+                        {% csrf_token %}
+                        <td>
+                          <input type="number" name="cantidad" min="1" placeholder="Cantidad" value="1" class="form-control" required>
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" name="precio_compra" placeholder="Precio" class="form-control" required>
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" name="precio_venta" placeholder="Precio" class="form-control" required>
+                        </td>
+                        <td>
+                          <input type="text" name="lote_fabricante" placeholder="Lote" class="form-control" required>
+                        </td>
+                        <td>
+                          <input type="date" name="fecha_produccion" class="form-control" required>
+                        </td>
+                        <td>
+                          <input type="date" name="fecha_vencimiento" class="form-control" required>
+                        </td>
+                        <td>
+                          <button type="submit" class="btn btn-sm btn-success">
+                            <i class="fas fa-cart-plus mr-1"></i> Agregar
+                          </button>
+                        </td>
+                      </form>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="8" class="text-center py-3">
+                        {% if query %}
+                          <div class="alert alert-warning mb-0">
+                            <i class="fas fa-exclamation-circle mr-2"></i> No se encontraron medicamentos con "{{ query }}"
+                          </div>
+                        {% else %}
+                          <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> Utilice el buscador para encontrar medicamentos
+                          </div>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Paginación mejorada -->
+              {% if medicamentos.has_other_pages %}
+              <nav aria-label="Paginación" class="mt-3">
+                <ul class="pagination pagination-sm justify-content-center">
+                  {% if medicamentos.has_previous %}
+                    <li class="page-item">
+                      <a class="page-link search-page-link" href="?q={{ query|default:'' }}&page={{ medicamentos.previous_page_number }}">&laquo;</a>
                     </li>
                   {% else %}
-                    <li class="page-item">
-                      <a class="page-link" href="?q={{ query|default:'' }}&page={{ i }}">{{ i }}</a>
+                    <li class="page-item disabled">
+                      <span class="page-link">&laquo;</span>
                     </li>
                   {% endif %}
-                {% endfor %}
-                
-                {% if medicamentos.has_next %}
-                  <li class="page-item">
-                    <a class="page-link" href="?q={{ query|default:'' }}&page={{ medicamentos.next_page_number }}">&raquo;</a>
-                  </li>
-                {% else %}
-                  <li class="page-item disabled">
-                    <span class="page-link">&raquo;</span>
-                  </li>
-                {% endif %}
-              </ul>
-            </nav>
-            {% endif %}
+                  
+                  {% for i in medicamentos.paginator.page_range %}
+                    {% if medicamentos.number == i %}
+                      <li class="page-item active">
+                        <span class="page-link">{{ i }}</span>
+                      </li>
+                    {% else %}
+                      <li class="page-item">
+                        <a class="page-link search-page-link" href="?q={{ query|default:'' }}&page={{ i }}">{{ i }}</a>
+                      </li>
+                    {% endif %}
+                  {% endfor %}
+                  
+                  {% if medicamentos.has_next %}
+                    <li class="page-item">
+                      <a class="page-link search-page-link" href="?q={{ query|default:'' }}&page={{ medicamentos.next_page_number }}">&raquo;</a>
+                    </li>
+                  {% else %}
+                    <li class="page-item disabled">
+                      <span class="page-link">&raquo;</span>
+                    </li>
+                  {% endif %}
+                </ul>
+              </nav>
+              {% endif %}
+            </div>
           </div>
         </div>
 
@@ -210,3 +212,91 @@
   </div>
 </div>
 {% endblock %}
+
+<!-- JavaScript para el buscador automático -->
+<script>
+  $(document).ready(function() {
+    var searchTimeout;
+    var currentSearch = '';
+    
+    // Función para realizar la búsqueda
+    function performSearch(query) {
+      if (query.length < 2) {
+        query = ''; // Si es muy corto, buscar todos los resultados
+      }
+      
+      // Mostrar indicador de carga
+      $('#searchResultsContainer').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Buscando medicamentos...</p></div>');
+      
+      // Realizar la búsqueda con AJAX
+      $.ajax({
+        url: window.location.pathname,
+        data: { 'q': query },
+        success: function(data) {
+          // Extraer solo la tabla de resultados del HTML devuelto
+          var $response = $(data);
+          var $resultsContainer = $response.find('#searchResultsContainer').html();
+          
+          if ($resultsContainer) {
+            $('#searchResultsContainer').html($resultsContainer);
+            // Reasignar eventos a los enlaces de paginación
+            $('.search-page-link').on('click', function(e) {
+              e.preventDefault();
+              var pageUrl = $(this).attr('href');
+              $('#searchResultsContainer').load(pageUrl + ' #searchResultsContainer > *');
+            });
+          } else {
+            $('#searchResultsContainer').html('<div class="alert alert-info">No se encontraron resultados.</div>');
+          }
+        },
+        error: function() {
+          $('#searchResultsContainer').html('<div class="alert alert-danger">Error al realizar la búsqueda. Recargue la página e intente nuevamente.</div>');
+        }
+      });
+    }
+    
+    // Manejar entrada de búsqueda
+    $('#searchInput').on('input', function() {
+      var query = $(this).val().trim();
+      currentSearch = query;
+      
+      // Actualizar la URL sin recargar la página
+      var newUrl = window.location.pathname + (query ? '?q=' + encodeURIComponent(query) : '');
+      window.history.pushState({ path: newUrl }, '', newUrl);
+      
+      // Cancelar el timeout anterior si existe
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      // Establecer un nuevo timeout para evitar múltiples solicitudes rápidas
+      searchTimeout = setTimeout(function() {
+        if (currentSearch === query) { // Solo si no ha cambiado la búsqueda
+          performSearch(query);
+        }
+      }, 300); // 300ms de retraso
+    });
+    
+    // Manejar clic en el botón de búsqueda
+    $('#searchButton').click(function() {
+      var query = $('#searchInput').val().trim();
+      performSearch(query);
+    });
+    
+    // Manejar Enter en el campo de búsqueda
+    $('#searchInput').keypress(function(e) {
+      if (e.which === 13) { // Enter key
+        var query = $(this).val().trim();
+        performSearch(query);
+        return false;
+      }
+    });
+    
+    // Manejar clic en enlaces de paginación
+    $(document).on('click', '.search-page-link', function(e) {
+      e.preventDefault();
+      var pageUrl = $(this).attr('href');
+      $('#searchResultsContainer').load(pageUrl + ' #searchResultsContainer > *');
+    });
+  });
+</script>
