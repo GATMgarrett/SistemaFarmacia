@@ -43,8 +43,11 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Vamos a redirigir la ruta URL del LogIn
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/verify-code/'  # Modificado para usar el 2FA
 LOGOUT_REDIRECT_URL = '/'
+
+# Especificar que se use nuestra vista personalizada de login
+AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
 
 # Application definition
 
@@ -69,6 +72,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'ventas.middleware.TwoFactorAuthMiddleware',  # Nuestro middleware personalizado para 2FA
 ]
 
 ROOT_URLCONF = 'SistemaFarmacia.urls'
@@ -166,3 +170,11 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # backend para las sesiones
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+# Configuración de correo electrónico para 2FA
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'german.gt285@gmail.com'  # Añadir el correo electrónico aquí
+EMAIL_HOST_PASSWORD = 'efns fmuv swjt rtwr'  # Añadir la contraseña de aplicación aquí

@@ -1,6 +1,7 @@
 from django.urls import path
 #con esto vamos a importar las vistas (ventas\views.py)
 from . import views
+from .auth_views import login_view, verify_code_view, resend_code_view
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -14,6 +15,7 @@ urlpatterns = [
     
     # urls para la creacion o registracion de  ventas y otros etc etc
     path('', views.ventas_view, name='Ventas'),
+    path('', views.ventas_view, name='index'),  # Alias para que funcione la redirección del 2FA
     path('venta/detalle/<int:id>/', views.detalle_venta, name='detalle_venta'),  # Nueva URL para el detalle de la venta
     path('venta/create/', views.create_venta_view, name='CreateVenta'),
     path('venta/add_to_cart/<int:lote_id>/', views.add_to_cart, name='add_to_cart'),
@@ -65,8 +67,10 @@ urlpatterns = [
     path('Dashboard/Proveedores/', views.dashboard_view_proveedores, name='Dashboard_proveedores'),
     path('Dashboard/Usuarios/', views.dashboard_view_usuarios, name='Dashboard_usuarios'),
     
-    # Vista para el login
-    path('login/', views.login_view, name='login'),
+    # Vistas para el login con 2FA
+    path('login/', login_view, name='login'),  # Mantener esta URL para compatibilidad
+    path('verify-code/', verify_code_view, name='verify_code'),
+    path('resend-code/', resend_code_view, name='resend_code'),
     #path('logout/', views.logout_view, name='logout'),
     
     # Vista para la Facturación

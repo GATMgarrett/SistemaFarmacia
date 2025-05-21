@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from .models_2fa import VerificationCode
 
 class Laboratorios(models.Model):
     nombre_laboratorio = models.CharField(max_length=100)

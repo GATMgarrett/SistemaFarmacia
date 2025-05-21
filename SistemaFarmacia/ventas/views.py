@@ -744,11 +744,13 @@ def dashboard_view_usuarios(request):
         'grafico_contribucion_html': grafico_contribucion_html,
         'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
     }
-
     return render(request, 'dashboard_usuarios.html', contexto)
 
 ###/////////////////////////////Todo esto va a ser para el login
-def login_view(request):
+# Función login original comentada para usar el sistema 2FA
+# Renombrado a old_login_view para evitar conflictos con el nuevo sistema 2FA
+def old_login_view(request):
+    """Esta función ha sido reemplazada por un sistema de autenticación en dos factores"""
     if request.method == "POST":
         username = request.POST['username']
         password = request.POST['password']

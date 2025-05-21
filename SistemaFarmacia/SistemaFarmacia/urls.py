@@ -23,7 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('ventas.urls')),
     #path('clientes/', include('clientes.urls')), aqui puede ir lo de login
-    path('accounts/', include('django.contrib.auth.urls'))
+    # Comentado para usar nuestro sistema de 2FA personalizado
+    # path('accounts/', include('django.contrib.auth.urls'))
 ]
 
 urlpatterns+= static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
