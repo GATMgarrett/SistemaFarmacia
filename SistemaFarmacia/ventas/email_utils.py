@@ -17,14 +17,14 @@ def send_verification_email(user_email, verification_code):
     message = MIMEMultipart()
     message['From'] = smtp_user
     message['To'] = user_email
-    message['Subject'] = 'Farmacia Noemi - Código de Verificación'
+    message['Subject'] = 'Farmacia Yasney - Código de Verificación'
     
     # Contenido del mensaje
     html = f'''
     <html>
     <body>
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-            <h2 style="color: #007bff; text-align: center;">Farmacia Noemi</h2>
+            <h2 style="color: #007bff; text-align: center;">Farmacia Yasney</h2>
             <p>Estimado(a) usuario,</p>
             <p>Para completar su inicio de sesión, por favor utilice el siguiente código de verificación:</p>
             <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">

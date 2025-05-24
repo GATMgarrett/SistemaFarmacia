@@ -1,66 +1,230 @@
 {% extends "base.html" %}
-
 {% load static %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1>Gestión de Inventario</h1>
-
-    <!-- Medicamentos con baja rotación 
-    <h2>Medicamentos con baja rotación</h2>
-    {% if medicamentos_baja_rotacion %}
-    <ul class="list-group mb-4">
-        {% for medicamento in medicamentos_baja_rotacion %}
-        <li class="list-group-item">{{ medicamento.nombre }}</li>
-        {% endfor %}
-    </ul>
-    <div>
-        <!-- Renderizar el gráfico de pastel 
-        {{ grafico_baja_rotacion_html|safe }}
-    </div>
-    {% else %}
-    <p>No hay medicamentos con baja rotación.</p>
-    {% endif %}
-    -->
-
-    <!-- Medicamentos cercanos al vencimiento -->
-    <h2>Medicamentos cercanos al vencimiento</h2>
-    {% if medicamentos_proximos_a_vencer %}
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Medicamento</th>
-                <th>Cantidad</th>
-                <th>Fecha de Vencimiento</th>
-                <th>Días Restantes</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for lote in medicamentos_proximos_a_vencer %}
-            <tr>
-                <td>{{ lote.medicamento }}</td>
-                <td>{{ lote.cantidad }}</td>
-                <td>{{ lote.fecha_vencimiento }}</td>
-                <td>{{ lote.dias_restantes }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="container-fluid">
+    <br>
     
-    {% else %}
-    <p>No hay medicamentos cercanos al vencimiento.</p>
-    {% endif %}
+    <!-- Card Principal - Dashboard de Inventario -->
+    <div class="card mb-4 shadow">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-boxes mr-2"></i> Gestión de Inventario
+            </h4>
+            <div>
+                <button class="btn btn-light btn-sm" id="refreshData">
+                    <i class="fas fa-sync-alt"></i> Actualizar datos
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <!-- Indicadores principales -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Productos en inventario</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_productos|default:'0' }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-box fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <!-- Alertas de Stock Mínimo -->
-    {% if alertas_stock_minimo %}
-    
-    <div>
-        <!-- Renderizar el gráfico de barras -->
-        {{ grafico_stock_minimo_html|safe }}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-danger shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                        Próximos a vencer</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_proximos_vencer|default:'0' }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar-times fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Stock bajo</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stock_bajo|default:'0' }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Valor de inventario</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ valor_inventario|default:'0' }} Bs</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos en una estructura de filas -->
+            <div class="row">
+                <!-- Alertas de Stock Mínimo (si hay) -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center py-2">
+                            <h5 class="mb-0"><i class="fas fa-exclamation-triangle mr-2"></i> Alertas de Stock Mínimo</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if alertas_stock_minimo %}
+                            <div class="chart-container" style="position: relative; height:350px;">
+                                {{ grafico_stock_minimo_html|safe }}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info text-center">
+                                <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                <p>No hay alertas de stock mínimo actualmente.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráfico de baja rotación (si está implementado) -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+                            <h5 class="mb-0"><i class="fas fa-chart-pie mr-2"></i> Rotación de Productos</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if grafico_baja_rotacion_html %}
+                            <div class="chart-container" style="position: relative; height:350px;">
+                                {{ grafico_baja_rotacion_html|safe }}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info text-center">
+                                <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                <p>No hay datos de rotación de productos disponibles.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección para Medicamentos próximos a vencer -->
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
+                            <h5 class="mb-0"><i class="fas fa-calendar-times mr-2"></i> Medicamentos Próximos a Vencer</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                {% if medicamentos_proximos_a_vencer %}
+                                <table class="table table-hover table-striped">
+                                    <thead class="table-danger">
+                                        <tr>
+                                            <th>Medicamento</th>
+                                            <th>Cantidad</th>
+                                            <th>Fecha de Vencimiento</th>
+                                            <th>Días Restantes</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for lote in medicamentos_proximos_a_vencer %}
+                                        <tr>
+                                            <td>{{ lote.medicamento }}</td>
+                                            <td>
+                                                <span class="badge {% if lote.cantidad > 10 %}bg-success{% elif lote.cantidad > 5 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.cantidad }}</span>
+                                            </td>
+                                            <td>{{ lote.fecha_vencimiento }}</td>
+                                            <td>
+                                                <span class="badge {% if lote.dias_restantes > 30 %}bg-success{% elif lote.dias_restantes > 15 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.dias_restantes }} días</span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-search"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <div class="alert alert-success text-center">
+                                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                    <p>No hay medicamentos cercanos al vencimiento. ¡Todo en orden!</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    {% else %}
-    <p>No hay alertas de stock mínimo.</p>
-    {% endif %}
-
 </div>
+
+<!-- Scripts específicos para el dashboard -->
+<script>
+    $(document).ready(function() {
+        // Refrescar datos al hacer clic en el botón
+        $('#refreshData').click(function() {
+            location.reload();
+        });
+    });
+</script>
+
+<!-- Estilos específicos para el dashboard -->
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .border-left-danger {
+        border-left: 0.25rem solid #e74a3b !important;
+    }
+    
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    
+    .chart-container {
+        width: 100%;
+        min-height: 300px;
+    }
+</style>
 {% endblock %}

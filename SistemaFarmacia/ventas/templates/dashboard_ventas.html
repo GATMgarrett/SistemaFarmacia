@@ -1,19 +1,261 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Dashboard de Ventas</h1>
+<div class="container-fluid">
+    <br>
     
-    <h2 class="mb-3">Análisis Descriptivo</h2>
-    <!-- Gráfico de Líneas de ventas de los Medicamentos -->
-    <div>
-        {{ grafico_lineas_html|safe }}
-    </div>
+    <!-- Card Principal - Dashboard de Ventas -->
+    <div class="card mb-4 shadow">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-chart-line mr-2"></i> Dashboard de Ventas
+            </h4>
+            <div>
+                <button class="btn btn-light btn-sm" id="refreshData">
+                    <i class="fas fa-sync-alt"></i> Actualizar datos
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <!-- Indicadores principales -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Ventas del mes</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_mes|default:'0' }} Bs</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <!-- Gráfico de Barras para mostrar los totales de ventas por categoría de cada medicamento -->
-    <div>
-        {{ grafico_barras_html|safe }}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Ventas anuales</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_anual|default:'0' }} Bs</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Productos vendidos</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ productos_vendidos|default:'0' }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-box fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Clientes nuevos</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ clientes_nuevos|default:'0' }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-users fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtro de fechas -->
+            <div class="card mb-4 shadow">
+                <div class="card-header bg-light py-2">
+                    <h6 class="m-0 font-weight-bold text-primary d-flex align-items-center">
+                        <i class="fas fa-filter mr-2"></i> Filtros
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="fecha_inicio" class="form-label">Fecha inicio</label>
+                            <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                                   value="{{ fecha_inicio|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="fecha_fin" class="form-label">Fecha fin</label>
+                            <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                                   value="{{ fecha_fin|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search mr-2"></i> Aplicar filtros
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Gráficos en una estructura de filas -->
+            <div class="row">
+                <!-- Gráfico de Líneas -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+                            <h5 class="mb-0"><i class="fas fa-chart-line mr-2"></i> Historico de Ventas</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="position: relative; height:350px; width:100%; overflow:hidden;">
+                                {{ grafico_lineas_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráfico de Barras -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
+                            <h5 class="mb-0"><i class="fas fa-chart-bar mr-2"></i> Ventas por Categoría</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="position: relative; height:350px; width:100%; overflow:hidden;">
+                                {{ grafico_barras_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección para Top Productos -->
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center py-2">
+                            <h5 class="mb-0"><i class="fas fa-star mr-2"></i> Top Productos Vendidos</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped">
+                                    <thead class="table-warning">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Medicamento</th>
+                                            <th>Categoría</th>
+                                            <th>Unidades vendidas</th>
+                                            <th>Total ventas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for producto in top_productos %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ producto.medicamento__nombre }}</td>
+                                            <td>
+                                                {% if producto.medicamento__categoria__nombre_categoria %}
+                                                <span class="badge bg-info">{{ producto.medicamento__categoria__nombre_categoria }}</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">Sin categoría</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ producto.total_unidades }}</td>
+                                            <td>{{ producto.total_ventas }} Bs</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="text-center">
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                                    <p>No hay datos de ventas disponibles.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
 </div>
+
+<!-- Scripts específicos para el dashboard -->
+<script>
+    $(document).ready(function() {
+        // Refrescar datos al hacer clic en el botón
+        $('#refreshData').click(function() {
+            location.reload();
+        });
+        
+        // Inicializar fecha fin como hoy si no está definida
+        if (!$('#fecha_fin').val()) {
+            var today = new Date();
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            var yyyy = today.getFullYear();
+            today = yyyy + '-' + mm + '-' + dd;
+            $('#fecha_fin').val(today);
+        }
+        
+        // Inicializar fecha inicio como hace 30 días si no está definida
+        if (!$('#fecha_inicio').val()) {
+            var thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            var dd = String(thirtyDaysAgo.getDate()).padStart(2, '0');
+            var mm = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
+            var yyyy = thirtyDaysAgo.getFullYear();
+            thirtyDaysAgo = yyyy + '-' + mm + '-' + dd;
+            $('#fecha_inicio').val(thirtyDaysAgo);
+        }
+    });
+</script>
+
+<!-- Estilos específicos para el dashboard -->
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    
+    .chart-container {
+        width: 100%;
+        min-height: 300px;
+    }
+</style>
 {% endblock %}
