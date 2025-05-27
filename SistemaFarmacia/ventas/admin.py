@@ -8,7 +8,7 @@ class LaboratoriosAdmin(admin.ModelAdmin):
 
 @admin.register(Medicamentos)
 class MedicamentosAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'stock', 'laboratorio']  # Elimina 'precio', ya no existe en el modelo
+    list_display = ['nombre', 'laboratorio']  # Se eliminó 'stock' ya que ahora se maneja en LoteMedicamento
 
 @admin.register(Roles)
 class RolesAdmin(admin.ModelAdmin):

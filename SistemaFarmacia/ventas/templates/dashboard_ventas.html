@@ -97,39 +97,17 @@
                 </div>
                 <div class="card-body">
                     <form method="GET" class="row g-3 align-items-end">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-5 mb-3">
                             <label for="fecha_inicio" class="form-label">Fecha inicio</label>
                             <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
-                                   value="{{ fecha_inicio|date:'Y-m-d' }}">
+                                value="{{ request.GET.fecha_inicio|default:'' }}">
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-5 mb-3">
                             <label for="fecha_fin" class="form-label">Fecha fin</label>
                             <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
-                                   value="{{ fecha_fin|date:'Y-m-d' }}">
+                                value="{{ request.GET.fecha_fin|default:'' }}">
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="categoria" class="form-label">Categoría</label>
-                            <select class="form-select form-control" id="categoria" name="categoria">
-                                <option value="">Todas las categorías</option>
-                                {% for categoria in categorias %}
-                                    <option value="{{ categoria }}" {% if categoria_seleccionada == categoria %}selected{% endif %}>
-                                        {{ categoria }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-8 mb-3">
-                            <label for="medicamento" class="form-label">Medicamento</label>
-                            <select class="form-select form-control" id="medicamento" name="medicamento">
-                                <option value="">Todos los medicamentos</option>
-                                {% for medicamento in medicamentos %}
-                                    <option value="{{ medicamento }}" {% if medicamento_seleccionado == medicamento %}selected{% endif %}>
-                                        {{ medicamento }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-2 mb-3">
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="fas fa-search mr-2"></i> Aplicar filtros
                             </button>
@@ -147,7 +125,14 @@
                         </div>
                         <div class="card-body p-0">
                             <div style="width:100%; padding: 15px;">
-                                {{ grafico_lineas_html|safe }}
+                                <div id="grafico_lineas_container">
+                                    {{ grafico_lineas_html|safe }}
+                                </div>
+                                {% if usando_datos_ejemplo %}
+                                <div class="alert alert-warning mt-3">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i> Se están mostrando datos de ejemplo. Para ver datos reales, complete ventas en el sistema.
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -164,7 +149,9 @@
                         </div>
                         <div class="card-body p-0">
                             <div style="width:100%; padding: 15px;">
-                                {{ grafico_barras_html|safe }}
+                                <div id="grafico_barras_container">
+                                    {{ grafico_barras_html|safe }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -242,91 +229,77 @@
             $('#fecha_fin').val(today);
         }
         
-        // Inicializar fecha inicio como hace 30 días si no está definida
-        if (!$('#fecha_inicio').val()) {
-            var thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            var dd = String(thirtyDaysAgo.getDate()).padStart(2, '0');
-            var mm = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
-            var yyyy = thirtyDaysAgo.getFullYear();
-            thirtyDaysAgo = yyyy + '-' + mm + '-' + dd;
-            $('#fecha_inicio').val(thirtyDaysAgo);
-        }
+        // Inicializar fecha inicio como hace 6 meses atrás siempre
+        var sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        var dd = String(sixMonthsAgo.getDate()).padStart(2, '0');
+        var mm = String(sixMonthsAgo.getMonth() + 1).padStart(2, '0');
+        var yyyy = sixMonthsAgo.getFullYear();
+        sixMonthsAgo = yyyy + '-' + mm + '-' + dd;
+        $('#fecha_inicio').val(sixMonthsAgo);
     });
 </script>
 
-<!-- JavaScript para actualizar el filtro de medicamentos según la categoría seleccionada -->
+<!-- JavaScript para actualizar el filtro de medicamentos según la categoría y tipo seleccionados -->
 <script>
+// Convertimos los datos de Django a JSON para usarlos en JavaScript
+const datosVentas = JSON.parse('{{ df_ventas|escapejs|safe }}');
 document.addEventListener('DOMContentLoaded', function() {
-    // Datos de medicamentos por categoría
-    const medicamentosPorCategoria = {
-        {% for categoria in categorias %}
-            "{{ categoria }}": [
-                {% for medicamento in medicamentos %}
-                    {% if medicamento.categoria == categoria %}
-                        "{{ medicamento }}",
-                    {% endif %}
-                {% endfor %}
-            ],
-        {% endfor %}
-    };
-
-    // Todos los medicamentos para la opción "Todas las categorías"
-    const todosMedicamentos = [
-        {% for medicamento in medicamentos %}
-            "{{ medicamento }}",
-        {% endfor %}
-    ];
-
-    // Obtener elementos del DOM
-    const categoriaSelect = document.getElementById('categoria');
-    const medicamentoSelect = document.getElementById('medicamento');
+    // Establecer valores por defecto para los campos de fecha si están vacíos
+    const fechaInicio = document.getElementById('fecha_inicio');
+    const fechaFin = document.getElementById('fecha_fin');
     
-    // Función para actualizar el desplegable de medicamentos
-    function actualizarMedicamentos() {
-        // Guardar el valor seleccionado actualmente
-        const valorSeleccionado = medicamentoSelect.value;
-        
-        // Limpiar opciones actuales
-        medicamentoSelect.innerHTML = '';
-        
-        // Añadir opción predeterminada
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = 'Todos los medicamentos';
-        medicamentoSelect.appendChild(defaultOption);
-        
-        // Determinar qué lista de medicamentos usar
-        let listaMedicamentos = [];
-        if (categoriaSelect.value === '') {
-            listaMedicamentos = todosMedicamentos;
-        } else if (medicamentosPorCategoria[categoriaSelect.value]) {
-            listaMedicamentos = medicamentosPorCategoria[categoriaSelect.value];
-        }
-        
-        // Añadir medicamentos al desplegable
-        listaMedicamentos.forEach(med => {
-            if (med && med.trim() !== '') {
-                const option = document.createElement('option');
-                option.value = med;
-                option.textContent = med;
-                
-                // Mantener seleccionado el medicamento si estaba seleccionado antes
-                if (med === valorSeleccionado) {
-                    option.selected = true;
-                }
-                
-                medicamentoSelect.appendChild(option);
-            }
-        });
+    if (!fechaInicio.value) {
+        // Fecha de hace 6 meses por defecto
+        const seisMesesAtras = new Date();
+        seisMesesAtras.setMonth(seisMesesAtras.getMonth() - 6);
+        fechaInicio.value = seisMesesAtras.toISOString().split('T')[0];
     }
     
-    // Evento para cuando cambia la categoría
-    categoriaSelect.addEventListener('change', actualizarMedicamentos);
-    
-    // Inicializar el desplegable de medicamentos
-    actualizarMedicamentos();
+    if (!fechaFin.value) {
+        // Fecha actual por defecto
+        const hoy = new Date();
+        fechaFin.value = hoy.toISOString().split('T')[0];
+    }
 });
+</script>
+
+<!-- Script para modificar los gráficos de Plotly -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Función para simplificar los controles de Plotly
+        function simplificarControlesPlotly() {
+            // Comprobar si hay gráficos de Plotly
+            if (typeof Plotly !== 'undefined') {
+                // Buscar todos los gráficos de Plotly en la página
+                var graficos = document.querySelectorAll('.js-plotly-plot');
+                
+                graficos.forEach(function(grafico) {
+                    // Obtener el ID del gráfico
+                    var id = grafico.id;
+                    
+                    // Actualizar la configuración del gráfico
+                    if (id) {
+                        Plotly.update(id, {}, {
+                            // Quitar controles y botones innecesarios
+                            modeBarButtonsToRemove: ['select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'pan2d', 'zoom2d', 'resetViews'],
+                            displaylogo: false,
+                            // Mantener solo opciones esenciales
+                            displayModeBar: true,
+                            responsive: true,
+                            scrollZoom: false
+                        });
+                    }
+                });
+            }
+        }
+        
+        // Intentar modificar los gráficos cuando la página esté cargada
+        simplificarControlesPlotly();
+        
+        // También intentar después de 1 segundo por si los gráficos se cargan de forma asíncrona
+        setTimeout(simplificarControlesPlotly, 1000);
+    });
 </script>
 
 <!-- Estilos específicos para el dashboard -->
@@ -350,6 +323,11 @@ document.addEventListener('DOMContentLoaded', function() {
     .chart-container {
         width: 100%;
         min-height: 300px;
+    }
+    
+    /* Estilos para ocultar controles innecesarios de Plotly */
+    .modebar-group:not(:first-child) {
+        display: none !important;
     }
 </style>
 {% endblock %}

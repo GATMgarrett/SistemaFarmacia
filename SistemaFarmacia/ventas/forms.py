@@ -56,12 +56,11 @@ class ProveedorForm(forms.ModelForm):
 class MedicamentoForm(forms.ModelForm):
     class Meta:
         model = Medicamentos
-        fields = ['nombre', 'descripcion', 'stock', 'laboratorio', 'categoria', 'tipo']  # Agregamos 'categoria' y 'tipo'
+        fields = ['nombre', 'descripcion', 'laboratorio', 'categoria', 'tipo']  # Campo stock eliminado
         
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control'}),
-            'stock': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
     laboratorio = forms.ModelChoiceField(

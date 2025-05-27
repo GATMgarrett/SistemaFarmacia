@@ -32,7 +32,7 @@ class Tipos(models.Model):
 class Medicamentos(models.Model):
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(null=True, blank=True)
-    stock = models.IntegerField(default=0)
+    # Campo stock eliminado - ahora el stock se maneja solo a nivel de LoteMedicamento
     laboratorio = models.ForeignKey(Laboratorios, on_delete=models.SET_NULL, null=True)
     categoria = models.ForeignKey(
         Categorias,

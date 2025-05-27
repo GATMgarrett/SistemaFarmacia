@@ -49,7 +49,7 @@
                             <td>{{ medicamento.id }}</td>
                             <td>{{ medicamento.nombre }}</td>
                             <td>{{ medicamento.descripcion }}</td>
-                            <td>{{ medicamento.stock }}</td>
+                            <td>{{ medicamento.total_stock|default:"0" }}</td>
                             <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
                             <td>{{ medicamento.categoria.nombre_categoria|default:"No asignada" }}</td>
                             <td>{{ medicamento.tipo.nombre_tipo|default:"No asignado" }}</td>
@@ -136,7 +136,7 @@
                             <td>{{ medicamento.id }}</td>
                             <td>{{ medicamento.nombre }}</td>
                             <td>{{ medicamento.descripcion }}</td>
-                            <td>{{ medicamento.stock }}</td>
+                            <td>{{ medicamento.total_stock|default:"0" }}</td>
                             <td>{{ medicamento.laboratorio.nombre_laboratorio }}</td>
                             <td>{{ medicamento.categoria.nombre_categoria|default:"No asignada" }}</td>
                             <td>{{ medicamento.tipo.nombre_tipo|default:"No asignado" }}</td>
