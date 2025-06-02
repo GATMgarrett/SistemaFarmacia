@@ -855,14 +855,25 @@ def obtener_medicamentos_proximos_a_vencer():
 
 
 def obtener_alertas_stock_minimo(umbral=10):
-    medicamentos_bajo_stock = Medicamentos.objects.filter(stock__lte=umbral, activo=True)
+    # Obtener todos los medicamentos activos
+    medicamentos = Medicamentos.objects.filter(activo=True)
     alertas = []
-    for med in medicamentos_bajo_stock:
-        alertas.append({
-            'nombre': med.nombre,
-            'stock_actual': med.stock,
-            'umbral': umbral
-        })
+    
+    # Para cada medicamento, calcular su stock total sumando las cantidades de todos sus lotes activos
+    for med in medicamentos:
+        stock_total = LoteMedicamento.objects.filter(
+            medicamento=med, 
+            activo=True
+        ).aggregate(total_stock=Sum('cantidad'))['total_stock'] or 0
+        
+        # Si el stock total es menor o igual al umbral especificado, añadirlo a las alertas
+        if stock_total <= umbral:
+            alertas.append({
+                'nombre': med.nombre,
+                'stock_actual': stock_total,
+                'umbral': umbral
+            })
+            
     return alertas
 
 def generar_grafico_barras_stock_minimo(alertas_stock_minimo):
@@ -1161,7 +1172,7 @@ def create_venta_view(request):
     page_number = request.GET.get('page', 1)
     lotes_medicamentos = paginator.get_page(page_number)
     
-    # Obtener el carrito de la sesión
+    # Obtener carrito actual
     productos_carrito = request.session.get('carrito', [])
     
     # Limpiar el carrito para evitar problemas con el formato antiguo
