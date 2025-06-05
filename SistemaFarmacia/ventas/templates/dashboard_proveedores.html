@@ -45,7 +45,8 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                         Compras del mes</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ compras_mes|default:'0' }} Bs</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ compras_mes|floatformat:2|default:'0.00' }} Bs</div>
+                                    <div class="text-xs text-gray-600">{{ rango_fechas_mes }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
@@ -75,15 +76,16 @@
                 <div class="col-xl-3 col-md-6 mb-4">
                     <div class="card border-left-info shadow h-100 py-2">
                         <div class="card-body">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Compras Anuales
+                            </div>
                             <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                        Compras anuales</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ compras_anual|default:'0' }} Bs</div>
-                                </div>
                                 <div class="col-auto">
-                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ compras_anuales|floatformat:2|default:'0.00' }} Bs</div>
+                                    <div class="text-xs text-gray-600 mt-1">{{ rango_fechas_ano }}</div>
                                 </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
                             </div>
                         </div>
                     </div>

@@ -45,7 +45,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                         Ventas por usuario</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ promedio_ventas|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_por_usuario|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-chart-line fa-2x text-gray-300"></i>
@@ -62,7 +62,8 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                         Usuario del mes</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ usuario_mes|default:'N/A' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ usuario_mes.nombre|default:'N/A' }}</div>
+                                    <div class="text-xs text-gray-600">{{ usuario_mes.ventas }} ventas, {{ usuario_mes.ingresos|floatformat:2 }} Bs</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-trophy fa-2x text-gray-300"></i>
@@ -79,7 +80,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                         Clientes registrados</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_clientes|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ clientes_registrados|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-address-card fa-2x text-gray-300"></i>

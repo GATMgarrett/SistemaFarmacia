@@ -10,6 +10,10 @@ from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils import timezone
 from django.utils.timezone import now
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+from django.db.models import Sum
+from .models import Proveedores, Compras, DetalleCompra
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
@@ -327,10 +331,10 @@ def activate_medicamento_view(request, id):
 #////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #//////////////////////////////////////////////////////////////////////////////////////Todo aqui sera para el analisi BA
 #/////////////////////////////////////////////////////////////////////Esto va a pertenecer al analsisid de ventas
-def obtener_datos_ventas(fecha_inicio=None, fecha_fin=None):
+def obtener_datos_ventas(fecha_inicio=None, fecha_fin=None, categoria_id=None, tipo_id=None):
     # Si no hay fechas, devolver un DataFrame vacío con la estructura correcta
     if not fecha_inicio or not fecha_fin:
-        return pd.DataFrame(columns=['medicamento', 'categoria', 'fecha', 'cantidad', 'precio_total'])
+        return pd.DataFrame(columns=['medicamento', 'categoria', 'tipo', 'fecha', 'cantidad', 'precio_total'])
     
     # Crear consulta básica
     ventas_query = DetalleVenta.objects.filter(activo=True)
@@ -340,7 +344,7 @@ def obtener_datos_ventas(fecha_inicio=None, fecha_fin=None):
     
     # Si no hay datos en el rango de fechas, devolver un DataFrame vacío
     if not ventas_query.exists():
-        return pd.DataFrame(columns=['medicamento', 'categoria', 'fecha', 'cantidad', 'precio_total'])
+        return pd.DataFrame(columns=['medicamento', 'categoria', 'tipo', 'fecha', 'cantidad', 'precio_total'])
     
     # Usar anotaciones y agregaciones de Django para procesar los datos en la base de datos
     # Usamos ExpressionWrapper para operaciones matemáticas
@@ -357,6 +361,7 @@ def obtener_datos_ventas(fecha_inicio=None, fecha_fin=None):
     ).values(
         'medicamento__nombre',
         'medicamento__categoria__nombre_categoria',
+        'medicamento__tipo__nombre_tipo',
         'mes'
     ).annotate(
         cantidad=Sum('cantidad'),
@@ -369,6 +374,7 @@ def obtener_datos_ventas(fecha_inicio=None, fecha_fin=None):
         ventas_data.append({
             'medicamento': v['medicamento__nombre'] or "Desconocido",
             'categoria': v['medicamento__categoria__nombre_categoria'] or "Sin categoría",
+            'tipo': v['medicamento__tipo__nombre_tipo'] or "Sin tipo",
             'fecha': v['mes'],
             'cantidad': v['cantidad'],
             'precio_total': v['precio_total']
@@ -463,7 +469,8 @@ def obtener_top_productos(fecha_inicio, fecha_fin, limite=10):
         precio_total=precio_total_expr
     ).values(
         'medicamento__nombre',
-        'medicamento__categoria__nombre_categoria'
+        'medicamento__categoria__nombre_categoria',
+        'medicamento__tipo__nombre_tipo'
     ).annotate(
         total_unidades=Sum('cantidad'),
         total_ventas=Sum('precio_total')
@@ -511,28 +518,60 @@ def generar_grafico_barras(df, fecha_inicio, fecha_fin):
     # Crear un DataFrame combinado con los tops de cada categoría
     df_tops = pd.concat(top_por_categoria.values())
     
-    # Crear el gráfico de barras mejorado
-    fig = px.bar(
-        df_tops,
-        x='medicamento',
-        y='cantidad',
-        color='categoria',
-        barmode='group',
-        labels={
-            'cantidad': '<b>Unidades Vendidas</b>',
-            'medicamento': '<b>Medicamento</b>',
-            'categoria': '<b>Categoría</b>'
-        },
-        title='<b>Top 5 Medicamentos por Categoría</b>',
-        template='plotly_white',
-        height=500,
-        color_discrete_sequence=px.colors.qualitative.Plotly
-    )
+    # Crear un gráfico base
+    fig = go.Figure()
     
-    # Mejorar el diseño del gráfico
+    # Obtener categorías únicas para menú desplegable
+    categorias = sorted(df_tops['categoria'].unique())
+    
+    # Crear un mapa de colores para mantener consistencia visual
+    import plotly.colors as colors
+    colores = colors.qualitative.Plotly
+    color_map = {cat: colores[i % len(colores)] for i, cat in enumerate(categorias)}
+    
+    # Crear trazas para cada categoría con visibilidad inicial
+    for i, categoria in enumerate(categorias):
+        df_cat = df_tops[df_tops['categoria'] == categoria]
+        fig.add_trace(go.Bar(
+            x=df_cat['medicamento'],
+            y=df_cat['cantidad'],
+            name=categoria,
+            marker_color=color_map[categoria],
+            hovertemplate='<b>%{x}</b><br>Cantidad: <b>%{y}</b><br>Categoría: ' + categoria + '<extra></extra>',
+            visible=(i == 0)  # Solo la primera categoría visible inicialmente
+        ))
+    
+    # Crear los botones para el menú desplegable
+    buttons = []
+    
+    # Opción para mostrar todas las categorías
+    all_visible = [True] * len(categorias)
+    buttons.append(dict(
+        label="Todas las Categorías",
+        method="update",
+        args=[{"visible": all_visible}]
+    ))
+    
+    # Opciones para mostrar cada categoría individual
+    for i, categoria in enumerate(categorias):
+        visible = [False] * len(categorias)
+        visible[i] = True
+        buttons.append(dict(
+            label=categoria,
+            method="update",
+            args=[{"visible": visible}]
+        ))
+    
+    # Configurar título y tamaño
     fig.update_layout(
         title='<b>Top 5 Medicamentos por Categoría</b>',
-
+        height=500,
+        template='plotly_white'
+    )
+    
+    # Actualizar el diseño completo del gráfico
+    fig.update_layout(
+        title='<b>Top 5 Medicamentos por Categoría</b>',
         xaxis={
             'title': '<b>Medicamento</b>',
             'tickfont': {'size': 11},
@@ -555,71 +594,43 @@ def generar_grafico_barras(df, fecha_inicio, fecha_fin):
             'zeroline': False,
             'rangemode': 'tozero'
         },
-        legend={
-            'title': '<b>Categorías</b>',
-            'font': {'size': 13, 'family': 'Arial, sans-serif'},
-
-            'orientation': 'h',
-            'yanchor': 'bottom',
-            'y': 1.02,
-            'xanchor': 'right',
-            'x': 1,
-            'bgcolor': 'rgba(255, 255, 255, 0.8)',
-            'bordercolor': '#e1e5eb',
-            'borderwidth': 1
-        },
+        # Menú desplegable para filtrar por categoría
+        updatemenus=[{
+            'buttons': buttons,
+            'direction': 'down',
+            'showactive': True,
+            'x': 0.1,
+            'y': 1.15,
+            'xanchor': 'left',
+            'yanchor': 'top',
+            'bgcolor': 'rgba(255, 255, 255, 0.9)',
+            'bordercolor': '#ddd',
+            'font': {'size': 12}
+        }],
+        # Etiqueta para el menú
+        annotations=[
+            dict(text="<b>Filtrar Categoría:</b>", 
+                 x=0.005, 
+                 y=1.12, 
+                 xref="paper", 
+                 yref="paper",
+                 showarrow=False, 
+                 font=dict(size=12, color="#333"))
+        ],
+        # Configuración adicional
         plot_bgcolor='white',
-        margin=dict(l=50, r=20, t=100, b=150, pad=5),
+        margin=dict(l=50, r=20, t=120, b=110, pad=5),  # Margen superior aumentado para el menú
         bargap=0.3,
         bargroupgap=0.1,
         hovermode='closest',
         hoverlabel={
             'bgcolor': 'white',
             'bordercolor': '#ddd'
-        }
+        },
+        showlegend=False  # Ocultar leyenda, ya que usamos el menú desplegable
     )
     
-    # Mejorar las barras
-    fig.update_traces(
-        hovertemplate=
-        '<b>%{x}</b><br>' +
-        'Cantidad: <b>%{y}</b><br>' +
-        '<extra></extra>',
-        marker=dict(
-            line=dict(width=0.5, color='DarkSlateGrey'),
-            opacity=0.9
-        )
-    )
-    
-    # Crear botones para filtrar por categoría
-    botones_categorias = []
-    
-    # Botón para mostrar todos los medicamentos top
-    botones_categorias.append(dict(
-        label="<b>Todos</b>",
-        method="update",
-        args=[{"x": [df_tops['medicamento']], 
-               "y": [df_tops['cantidad']]}, 
-              {"title": "<b>Top 5 Medicamentos por Categoría</b>"}]
-    ))
-    
-    # Botones para cada categoría - Comentado para eliminar los filtros internos
-    # for categoria, df_cat in top_por_categoria.items():
-    #     botones_categorias.append(dict(
-    #         label=f"<b>{categoria[:15]}{'...' if len(categoria) > 15 else ''}</b>",
-    #         method="update",
-    #         args=[{"x": [df_cat['medicamento']], 
-    #                "y": [df_cat['cantidad']]}, 
-    #               {"title": f"<b>Top 5 Medicamentos: {categoria}</b>"}]
-    #     ))
-            
-    fig.update_layout(
-        autosize=True,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-    )
-    
-    # Configuración simplificada
+    # Configuración simplificada para el gráfico de barras
     config = {
         'responsive': True,
         'displaylogo': False
@@ -631,8 +642,32 @@ def generar_grafico_barras(df, fecha_inicio, fecha_fin):
 def generar_grafico_con_plotly(df):
     fig = go.Figure()
     
-    # Obtener categorías y medicamentos únicos
-    categorias = df['categoria'].unique()
+    # Si el DataFrame está vacío, devolver un gráfico vacío con un mensaje
+    if df.empty:
+        fig.add_annotation(
+            text="No hay datos disponibles para los filtros seleccionados",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16)
+        )
+        
+        fig.update_layout(
+            title="<b>Histórico de Ventas</b>",
+            height=500,
+            template="plotly_white"
+        )
+        
+        config = {
+            'responsive': True,
+            'displaylogo': False
+        }
+        
+        return fig.to_html(full_html=False, include_plotlyjs='cdn', config=config)
+    
+    # Obtener categorías, tipos y medicamentos únicos
+    categorias = sorted(df['categoria'].unique())
+    tipos = sorted(df['tipo'].unique())
     medicamentos = df['medicamento'].unique()
     
     # Crear un colormap para que cada medicamento tenga un color consistente
@@ -642,43 +677,110 @@ def generar_grafico_con_plotly(df):
     for i, med in enumerate(medicamentos):
         color_map[med] = colores[i % len(colores)]
     
-    # Agregar líneas para cada medicamento, pero limitar a 5 medicamentos por categoría inicialmente
-    for categoria in categorias:
-        # Filtrar medicamentos de esta categoría
-        meds_en_categoria = df[df['categoria'] == categoria]['medicamento'].unique()
+    # Crear los botones para filtrar por categoría
+    buttons_categoria = []
+    
+    # Botón para mostrar todas las categorías
+    buttons_categoria.append(
+        dict(
+            label = 'Todas las Categorías',
+            method = 'update',
+            args = [{'visible': [True] * len(medicamentos)}]
+        )
+    )
+    
+    # Mapeo de medicamentos a su índice en la lista de trazas
+    med_to_index = {}
+    
+    # Agregar líneas para cada medicamento y guardar su índice
+    for i, medicamento in enumerate(medicamentos):
+        # Filtrar datos por medicamento
+        datos_filtrados = df[df['medicamento'] == medicamento]
         
-        # Tomar solo los primeros 5 medicamentos o menos si hay menos
-        meds_a_mostrar = meds_en_categoria[:min(5, len(meds_en_categoria))]
-        
-        for medicamento in meds_a_mostrar:
-            # Filtrar datos por medicamento y categoría
-            datos_filtrados = df[(df['medicamento'] == medicamento) & 
-                               (df['categoria'] == categoria)]
+        if not datos_filtrados.empty:
+            # Obtener la categoría y tipo para este medicamento (tomamos el primero si hay varios)
+            categoria = datos_filtrados['categoria'].iloc[0]
+            tipo = datos_filtrados['tipo'].iloc[0]
             
-            if not datos_filtrados.empty:
-                fig.add_trace(go.Scatter(
-                    x=datos_filtrados['fecha'],
-                    y=datos_filtrados['cantidad'],
-                    mode='lines+markers',
-                    name=f"{medicamento} ({categoria})",
-                    line=dict(color=color_map[medicamento], width=2.5),
-                    marker=dict(
-                        size=7,
-                        line=dict(width=1, color='DarkSlateGrey')
-                    ),
-                    hovertemplate=
-                    '<b>%{x|%d-%m-%Y}</b><br>' +
-                    'Cantidad: <b>%{y}</b><br>' +
-                    '<extra></extra>',
-                    visible=True if categoria == categorias[0] else 'legendonly',
-                ))
-
-    # Nota: Se han eliminado los botones de categorías para dejar solo los controles de filtro externos
+            # Guardar el índice de esta traza para el medicamento
+            med_to_index[medicamento] = i
+            
+            fig.add_trace(go.Scatter(
+                x=datos_filtrados['fecha'],
+                y=datos_filtrados['cantidad'],
+                mode='lines+markers',
+                name=f"{medicamento}",
+                legendgroup=categoria,
+                hovertemplate=
+                '<b>%{x|%d-%m-%Y}</b><br>' +
+                'Cantidad: <b>%{y}</b><br>' +
+                f'Categoría: {categoria}<br>' +
+                f'Tipo: {tipo}<br>' +
+                '<extra></extra>',
+                line=dict(color=color_map[medicamento], width=2.5),
+                marker=dict(
+                    size=7,
+                    line=dict(width=1, color='DarkSlateGrey')
+                )
+            ))
+    
+    # Crear botones para cada categoría
+    for cat in categorias:
+        # Crear una lista de visibilidad - True para medicamentos de esta categoría, False para otros
+        visibility = []
+        for med in medicamentos:
+            # Si el medicamento está en esta categoría, hacerlo visible
+            datos_med = df[df['medicamento'] == med]
+            if not datos_med.empty and datos_med['categoria'].iloc[0] == cat:
+                visibility.append(True)
+            else:
+                visibility.append(False)
+        
+        # Añadir el botón
+        buttons_categoria.append(
+            dict(
+                label = cat,
+                method = 'update',
+                args = [{'visible': visibility}]
+            )
+        )
+    
+    # Crear los botones para filtrar por tipo
+    buttons_tipo = []
+    
+    # Botón para mostrar todos los tipos
+    buttons_tipo.append(
+        dict(
+            label = 'Todos los Tipos',
+            method = 'update',
+            args = [{'visible': [True] * len(medicamentos)}]
+        )
+    )
+    
+    # Crear botones para cada tipo
+    for tipo in tipos:
+        # Crear una lista de visibilidad - True para medicamentos de este tipo, False para otros
+        visibility = []
+        for med in medicamentos:
+            # Si el medicamento es de este tipo, hacerlo visible
+            datos_med = df[df['medicamento'] == med]
+            if not datos_med.empty and datos_med['tipo'].iloc[0] == tipo:
+                visibility.append(True)
+            else:
+                visibility.append(False)
+        
+        # Añadir el botón
+        buttons_tipo.append(
+            dict(
+                label = tipo,
+                method = 'update',
+                args = [{'visible': visibility}]
+            )
+        )
     
     # Configurar el diseño
     fig.update_layout(
-        title="<b>Histórico de Ventas por Categoría</b>",
-
+        title="<b>Histórico de Ventas</b>",
         xaxis={
             'title': "<b>Fecha</b>",
             'tickfont': {'size': 12},
@@ -702,16 +804,15 @@ def generar_grafico_con_plotly(df):
         legend={
             'title': '<b>Medicamentos</b>',
             'font': {'size': 13, 'family': 'Arial, sans-serif'},
-
             'orientation': 'v',
             'y': 1,
             'x': 1.02,
             'xanchor': 'left',
             'yanchor': 'top',
-            'bgcolor': 'rgba(255, 255, 255, 0.8)',
-            'bordercolor': '#e1e5eb',
+            'bgcolor': 'rgba(255, 255, 255, 0.9)',
+            'bordercolor': '#ddd',
             'borderwidth': 1,
-            'itemclick': 'toggleothers',
+            'itemclick': 'toggle',
             'itemdoubleclick': 'toggle'
         },
         margin=dict(l=50, r=20, t=100, b=80, pad=5),
@@ -721,11 +822,50 @@ def generar_grafico_con_plotly(df):
             'bgcolor': 'white',
             'bordercolor': '#ddd'
         },
-        # Se han eliminado los menús desplegables internos
         height=500,
         autosize=True,
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
+        # Añadir menús desplegables para filtrar
+        updatemenus=[
+            # Menú para categorías
+            dict(
+                buttons=buttons_categoria,
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True,
+                x=0.1,
+                xanchor="left",
+                y=1.15,
+                yanchor="top",
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='#ddd',
+                font=dict(size=12),
+                name='Filtrar por Categoría'
+            ),
+            # Menú para tipos
+            dict(
+                buttons=buttons_tipo,
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True,
+                x=0.5,
+                xanchor="left",
+                y=1.15,
+                yanchor="top",
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='#ddd',
+                font=dict(size=12),
+                name='Filtrar por Tipo'
+            )
+        ],
+        # Etiquetas para los menús
+        annotations=[
+            dict(text="<b>Categoría:</b>", x=0.005, y=1.12, xref="paper", yref="paper",
+                 showarrow=False, font=dict(size=13, color="#333")),
+            dict(text="<b>Tipo:</b>", x=0.405, y=1.12, xref="paper", yref="paper",
+                 showarrow=False, font=dict(size=13, color="#333"))
+        ]
     )
     
     # Configuración simplificada
@@ -745,6 +885,8 @@ def dashboard_view_ventas(request):
     # Procesar parámetros de filtro de fechas si existen
     fecha_inicio = request.GET.get('fecha_inicio', None)
     fecha_fin = request.GET.get('fecha_fin', None)
+    categoria_id = request.GET.get('categoria', None)
+    tipo_id = request.GET.get('tipo', None)
     
     # Si no hay filtros, usar rango por defecto (6 meses atrás)
     if not fecha_inicio or not fecha_fin:
@@ -761,12 +903,12 @@ def dashboard_view_ventas(request):
             fecha_inicio = fecha_fin - timedelta(days=180)  # 6 meses (aproximadamente)
     
     # Obtener datos de ventas en el rango de fechas
-    df_ventas = obtener_datos_ventas(fecha_inicio, fecha_fin)
+    df_ventas = obtener_datos_ventas(fecha_inicio, fecha_fin, categoria_id, tipo_id)
     
     # Si no hay datos, crear un DataFrame vacío simple
     if df_ventas.empty:
         # Solo crear un DataFrame vacío con las columnas básicas
-        df_ventas = pd.DataFrame(columns=['medicamento', 'categoria', 'fecha', 'cantidad', 'precio_total'])
+        df_ventas = pd.DataFrame(columns=['medicamento', 'categoria', 'tipo', 'fecha', 'cantidad', 'precio_total'])
     
     # Generar gráficos con Plotly - ELIMINADA LA DUPLICACIÓN DE LLAMADAS
     grafico_lineas_html = generar_grafico_con_plotly(df_ventas)
@@ -781,6 +923,11 @@ def dashboard_view_ventas(request):
     # Obtener los datos para la tabla de top productos vendidos
     top_productos = obtener_top_productos(fecha_inicio, fecha_fin)
     
+    # Obtener todas las categorías y tipos para los filtros
+    from ventas.models import Categorias, Tipos
+    categorias = Categorias.objects.filter(activo=True).order_by('nombre_categoria')
+    tipos = Tipos.objects.filter(activo=True).order_by('nombre_tipo')
+    
     # Pasar solo los datos y gráficos al contexto
     contexto = {
         'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
@@ -793,6 +940,8 @@ def dashboard_view_ventas(request):
         'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d'),  # Fecha inicio seleccionada
         'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),  # Fecha fin seleccionada
         'top_productos': top_productos,  # Top productos vendidos
+        'categorias': categorias,  # Lista de categorías para el filtro
+        'tipos': tipos,  # Lista de tipos para el filtro
     }
 
     return render(request, 'dashboard_ventas.html', contexto)
@@ -845,10 +994,14 @@ def obtener_medicamentos_proximos_a_vencer():
 
     proximos_a_vencer = []
     for lote in lotes_vencer:
+        dias_restantes = (lote.fecha_vencimiento - fecha_actual).days
         proximos_a_vencer.append({
             'medicamento': lote.medicamento.nombre,
             'cantidad': lote.cantidad,
-            'fecha_vencimiento': lote.fecha_vencimiento
+            'fecha_vencimiento': lote.fecha_vencimiento,
+            'dias_restantes': dias_restantes,
+        'lote_id': lote.id,
+        'lote_fabricante': lote.lote_fabricante
         })
     return proximos_a_vencer
 
@@ -867,7 +1020,7 @@ def obtener_alertas_stock_minimo(umbral=10):
         ).aggregate(total_stock=Sum('cantidad'))['total_stock'] or 0
         
         # Si el stock total es menor o igual al umbral especificado, añadirlo a las alertas
-        if stock_total <= umbral:
+        if stock_total <= umbral and stock_total > 0:  # Solo incluir si tiene stock mayor a 0
             alertas.append({
                 'nombre': med.nombre,
                 'stock_actual': stock_total,
@@ -930,9 +1083,23 @@ def dashboard_view_inventario(request):
 
     # Obtener los medicamentos cercanos al vencimiento
     medicamentos_proximos_a_vencer = obtener_medicamentos_proximos_a_vencer()
+    
+    # Total de productos próximos a vencer
+    total_proximos_vencer = len(medicamentos_proximos_a_vencer)
 
     # Obtener las alertas de stock mínimo
     alertas_stock_minimo = obtener_alertas_stock_minimo()
+    
+    # Total de productos con stock bajo
+    total_stock_bajo = len(alertas_stock_minimo)
+    
+    # Calcular el valor total del inventario
+    valor_inventario = 0
+    lotes_activos = LoteMedicamento.objects.filter(activo=True)
+    
+    for lote in lotes_activos:
+        if lote.precio_venta:  # Verificar que el precio de venta exista
+            valor_inventario += lote.precio_venta * lote.cantidad
 
     # Generar gráfico de barras para stock mínimo
     grafico_stock_minimo_html = generar_grafico_barras_stock_minimo(alertas_stock_minimo)
@@ -945,21 +1112,39 @@ def dashboard_view_inventario(request):
         'medicamentos_proximos_a_vencer': medicamentos_proximos_a_vencer,
         'alertas_stock_minimo': alertas_stock_minimo,
         'grafico_stock_minimo_html': grafico_stock_minimo_html,
-        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
+        'grupos': grupos_usuario,  # Pasar los grupos del usuario a la plantilla
+        
+        # Agregar los valores para las tarjetas
+        'total_productos': total_medicamentos,
+        'total_proximos_vencer': total_proximos_vencer,
+        'total_stock_bajo': total_stock_bajo,
+        'valor_inventario': round(valor_inventario, 2)  # Redondear a 2 decimales
     }
     return render(request, 'dashboard_inventario.html', contexto)
 
-def cargar_datos_compras():
+def cargar_datos_compras(fecha_inicio=None, fecha_fin=None):
     # Cargar datos de compras y proveedores
-    compras = Compras.objects.filter(activo=True).select_related('proveedor')
+    query = Compras.objects.filter(activo=True)
+    if fecha_inicio:
+        query = query.filter(fecha_compra__gte=fecha_inicio)
+    if fecha_fin:
+        query = query.filter(fecha_compra__lte=fecha_fin)
+    
+    compras = query.select_related('proveedor')
     compras_df = pd.DataFrame.from_records(
         compras.values('id', 'proveedor__nombre_empresa', 'fecha_compra', 'precio_total')
     )
     return compras_df
 
-def cargar_datos_detalle_compras():
+def cargar_datos_detalle_compras(fecha_inicio=None, fecha_fin=None):
     # Cargar datos de los detalles de las compras
-    detalles = DetalleCompra.objects.filter(activo=True).select_related('compra', 'medicamento')
+    query = DetalleCompra.objects.filter(activo=True, compra__activo=True) # Asegurar que la compra también esté activa
+    if fecha_inicio:
+        query = query.filter(compra__fecha_compra__gte=fecha_inicio)
+    if fecha_fin:
+        query = query.filter(compra__fecha_compra__lte=fecha_fin)
+
+    detalles = query.select_related('compra', 'medicamento')
     detalles_df = pd.DataFrame.from_records(
         detalles.values(
             'compra__id', 
@@ -1002,15 +1187,16 @@ def analizar_medicamentos_mas_comprados(detalles_df, por='cantidad'):
 def grafico_proveedor_frecuente(proveedor_frecuente):
     fig = px.bar(
         proveedor_frecuente,
-        x='cantidad_compras',
-        y='proveedor__nombre_empresa',
+        x='proveedor__nombre_empresa',  # Cambiado para barras verticales
+        y='cantidad_compras',           # Cambiado para barras verticales
         title="Proveedores más frecuentes",
-        orientation='h',  # Barras horizontales
-        labels={'cantidad_compras': 'Número de Compras', 'proveedor__nombre_empresa': 'Proveedor'},
-        text='cantidad_compras',  # Mostrar valores en las barras
+        # orientation='h', # Eliminado para barras verticales (suele ser el default)
+        labels={'proveedor__nombre_empresa': 'Proveedor', 'cantidad_compras': 'Número de Compras'},
+        text='cantidad_compras',
     )
-    fig.update_traces(textposition='outside')
+    fig.update_traces(texttemplate='%{text}', textposition='outside') # texttemplate para mejor control
     fig.update_layout(template='plotly_white', showlegend=False)
+    fig.update_xaxes(tickangle=-45) # Rotar etiquetas del eje X para mejor legibilidad
     return fig.to_html(full_html=False)
 
 def grafico_medicamentos_mas_comprados(medicamentos, por='cantidad'):
@@ -1021,8 +1207,8 @@ def grafico_medicamentos_mas_comprados(medicamentos, por='cantidad'):
         medicamentos,
         x=y_col,
         y='medicamento__nombre',
-        title=titulo,
         orientation='h',  # Barras horizontales
+        title=titulo,
         labels={y_col: "Cantidad Total" if por == 'cantidad' else "Costo Total", 'medicamento__nombre': "Medicamento"},
         text=y_col,  # Mostrar valores en las barras
     )
@@ -1033,9 +1219,27 @@ def grafico_medicamentos_mas_comprados(medicamentos, por='cantidad'):
 # Vista del dashboard de los proveedores
 @login_required
 def dashboard_view_proveedores(request):
-    # Cargar datos
-    compras_df = cargar_datos_compras()
-    detalles_df = cargar_datos_detalle_compras()
+    fecha_inicio_str = request.GET.get('fecha_inicio')
+    fecha_fin_str = request.GET.get('fecha_fin')
+
+    fecha_inicio_filtro = None
+    fecha_fin_filtro = None
+
+    if fecha_inicio_str:
+        try:
+            fecha_inicio_filtro = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+        except ValueError:
+            messages.error(request, "Formato de fecha de inicio inválido para filtros. Use YYYY-MM-DD.")
+    
+    if fecha_fin_str:
+        try:
+            fecha_fin_filtro = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+        except ValueError:
+            messages.error(request, "Formato de fecha de fin inválido para filtros. Use YYYY-MM-DD.")
+
+    # Cargar datos para los gráficos, aplicando filtros de fecha si existen
+    compras_df = cargar_datos_compras(fecha_inicio=fecha_inicio_filtro, fecha_fin=fecha_fin_filtro)
+    detalles_df = cargar_datos_detalle_compras(fecha_inicio=fecha_inicio_filtro, fecha_fin=fecha_fin_filtro)
 
     # Análisis
     proveedor_frecuente = analizar_proveedor_frecuente(compras_df)
@@ -1046,6 +1250,38 @@ def dashboard_view_proveedores(request):
     grafico_proveedores_html = grafico_proveedor_frecuente(proveedor_frecuente)
     grafico_medicamentos_cantidad_html = grafico_medicamentos_mas_comprados(medicamentos_por_cantidad, por='cantidad')
     grafico_medicamentos_costo_html = grafico_medicamentos_mas_comprados(medicamentos_por_costo, por='costo')
+    # Cálculos para los cards
+    total_proveedores_activos = Proveedores.objects.filter(activo=True).count()
+
+    hoy = datetime.today()
+    # Compras del mes
+    inicio_mes = hoy.replace(day=1)
+    fin_mes = inicio_mes + relativedelta(months=1) - timedelta(days=1)
+    compras_mes_actual = Compras.objects.filter(
+        activo=True, 
+        fecha_compra__gte=inicio_mes, 
+        fecha_compra__lte=fin_mes
+    ).aggregate(total=Sum('precio_total'))['total'] or 0
+    rango_fechas_mes = f"{inicio_mes.strftime('%d/%m/%Y')} - {fin_mes.strftime('%d/%m/%Y')}"
+
+    # Productos comprados en el mes
+    productos_comprados_mes_actual = DetalleCompra.objects.filter(
+        activo=True, 
+        compra__activo=True, 
+        compra__fecha_compra__gte=inicio_mes, 
+        compra__fecha_compra__lte=fin_mes
+    ).aggregate(total_cantidad=Sum('cantidad'))['total_cantidad'] or 0
+
+    # Compras anuales
+    inicio_ano = hoy.replace(day=1, month=1)
+    fin_ano = inicio_ano.replace(year=hoy.year + 1) - timedelta(days=1) # Correcto para fin de año
+    compras_anuales_actual = Compras.objects.filter(
+        activo=True, 
+        fecha_compra__gte=inicio_ano, 
+        fecha_compra__lte=fin_ano
+    ).aggregate(total=Sum('precio_total'))['total'] or 0
+    rango_fechas_ano = f"{inicio_ano.strftime('%d/%m/%Y')} - {fin_ano.strftime('%d/%m/%Y')}"
+
     grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     # Contexto para el template
@@ -1053,7 +1289,19 @@ def dashboard_view_proveedores(request):
         'grafico_proveedores_html': grafico_proveedores_html,
         'grafico_medicamentos_cantidad_html': grafico_medicamentos_cantidad_html,
         'grafico_medicamentos_costo_html': grafico_medicamentos_costo_html,
-        'grupos': grupos_usuario  # Pasar los grupos del usuario a la plantilla
+        'grupos': grupos_usuario,  # Pasar los grupos del usuario a la plantilla
+        
+        # Datos para los cards
+        'total_proveedores': total_proveedores_activos,
+        'compras_mes': compras_mes_actual,
+        'rango_fechas_mes': rango_fechas_mes,
+        'productos_comprados': productos_comprados_mes_actual,
+        'compras_anuales': compras_anuales_actual,
+        'rango_fechas_ano': rango_fechas_ano,
+
+        # Fechas para el formulario de filtro (mantener lo que el usuario ingresó)
+        'fecha_inicio': fecha_inicio_str if fecha_inicio_str else '',
+        'fecha_fin': fecha_fin_str if fecha_fin_str else '',
     }
 
     return render(request, 'dashboard_proveedores.html', contexto)
@@ -1062,7 +1310,20 @@ def dashboard_view_proveedores(request):
 def cargar_datos_ventas():
     # Extraer las ventas y usuarios activos
     ventas = Ventas.objects.filter(activo=True).values('id', 'usuario__username', 'fecha_venta', 'precio_total')
-    return pd.DataFrame(list(ventas))
+    df = pd.DataFrame(list(ventas))
+    
+    # Obtener los nombres de los clientes a través de las facturas
+    facturas = Factura.objects.filter(venta__in=df['id']).values('venta_id', 'cliente__nombre')
+    facturas_df = pd.DataFrame(list(facturas))
+    
+    # Unir los datos de las facturas con las ventas
+    df = df.merge(facturas_df, left_on='id', right_on='venta_id', how='left')
+    df = df.rename(columns={'cliente__nombre': 'cliente_nombre'})
+    
+    # Convertir fecha_venta a datetime.datetime
+    df['fecha_venta'] = pd.to_datetime(df['fecha_venta'])
+    
+    return df
 def analizar_frecuencia_ventas(df_ventas):
     # Agrupar por usuario y contar las ventas
     frecuencia = df_ventas.groupby('usuario__username').size().reset_index(name='frecuencia')
@@ -1108,6 +1369,36 @@ def dashboard_view_usuarios(request):
     frecuencia_ventas = analizar_frecuencia_ventas(ventas_df)
     contribucion_ingresos = analizar_contribucion_ingresos(ventas_df)
 
+    # Cálculos para los cards
+    # Total de usuarios activos
+    total_usuarios = User.objects.filter(is_active=True).count()
+
+    # Ventas por usuario (promedio)
+    if frecuencia_ventas.empty:
+        ventas_por_usuario = 0
+    else:
+        ventas_por_usuario = frecuencia_ventas['frecuencia'].mean()
+
+    # Usuario del mes (basado en ventas del mes actual)
+    hoy = datetime.now()
+    inicio_mes = datetime(hoy.year, hoy.month, 1)
+    ventas_mes = ventas_df[(ventas_df['fecha_venta'] >= inicio_mes) & (ventas_df['fecha_venta'] <= hoy)]
+    if ventas_mes.empty:
+        usuario_mes = {'nombre': 'N/A', 'ventas': 0, 'ingresos': 0}
+    else:
+        ventas_mes_frecuencia = ventas_mes.groupby('usuario__username').size().reset_index(name='ventas_mes')
+        ventas_mes_ingresos = ventas_mes.groupby('usuario__username')['precio_total'].sum().reset_index(name='ingresos_mes')
+        usuario_mes = ventas_mes_frecuencia.merge(ventas_mes_ingresos, on='usuario__username')
+        usuario_mes = usuario_mes.sort_values(by='ventas_mes', ascending=False).iloc[0]
+        usuario_mes = {
+            'nombre': usuario_mes['usuario__username'],
+            'ventas': usuario_mes['ventas_mes'],
+            'ingresos': usuario_mes['ingresos_mes']
+        }
+
+    # Clientes registrados
+    clientes_registrados = ventas_df['cliente_nombre'].nunique()
+
     # Generar gráficos
     grafico_frecuencia_html = grafico_frecuencia_ventas(frecuencia_ventas)
     grafico_contribucion_html = grafico_contribucion_ingresos(contribucion_ingresos)
@@ -1118,7 +1409,13 @@ def dashboard_view_usuarios(request):
     contexto = {
         'grafico_frecuencia_html': grafico_frecuencia_html,
         'grafico_contribucion_html': grafico_contribucion_html,
-        'grupos': grupos_usuario
+        'grupos': grupos_usuario,
+        
+        # Datos para los cards
+        'total_usuarios': total_usuarios,
+        'ventas_por_usuario': round(ventas_por_usuario, 1),
+        'usuario_mes': usuario_mes,
+        'clientes_registrados': clientes_registrados
     }
     return render(request, 'dashboard_usuarios.html', contexto)
 

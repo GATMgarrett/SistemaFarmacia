@@ -149,28 +149,32 @@
                                     <thead class="table-danger">
                                         <tr>
                                             <th>Medicamento</th>
-                                            <th>Cantidad</th>
-                                            <th>Fecha de Vencimiento</th>
-                                            <th>Días Restantes</th>
-                                            <th>Acciones</th>
+<th>Cantidad</th>
+<th>Fecha de Vencimiento</th>
+<th>Días Restantes</th>
+<th>ID Lote</th>
+<th>Lote Fabricante</th>
+<th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for lote in medicamentos_proximos_a_vencer %}
                                         <tr>
                                             <td>{{ lote.medicamento }}</td>
-                                            <td>
-                                                <span class="badge {% if lote.cantidad > 10 %}bg-success{% elif lote.cantidad > 5 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.cantidad }}</span>
-                                            </td>
-                                            <td>{{ lote.fecha_vencimiento }}</td>
-                                            <td>
-                                                <span class="badge {% if lote.dias_restantes > 30 %}bg-success{% elif lote.dias_restantes > 15 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.dias_restantes }} días</span>
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-search"></i>
-                                                </button>
-                                            </td>
+<td>
+    <span class="badge {% if lote.cantidad > 10 %}bg-success{% elif lote.cantidad > 5 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.cantidad }}</span>
+</td>
+<td>{{ lote.fecha_vencimiento }}</td>
+<td>
+    <span class="badge {% if lote.dias_restantes > 30 %}bg-success{% elif lote.dias_restantes > 15 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.dias_restantes }} días</span>
+</td>
+<td>{{ lote.lote_id }}</td>
+<td>{{ lote.lote_fabricante }}</td>
+<td>
+    <button class="btn btn-sm btn-outline-primary">
+        <i class="fas fa-search"></i>
+    </button>
+</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
