@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <br>
+    
+    <!-- Card Principal - Dashboard de Predicciones -->
+    <div class="card mb-4 shadow">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-chart-line mr-2"></i> Predicción de Ventas (Redes Bayesianas Dinámicas)
+            </h4>
+            <div>
+                <button class="btn btn-light btn-sm" id="refreshData">
+                    <i class="fas fa-sync-alt"></i> Actualizar predicción
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <!-- Indicadores principales -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Predicción {{ mes1_nombre }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes1 }} unidades</div>
+                                    <small class="text-muted">Próximo mes</small>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Predicción {{ mes2_nombre }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes2 }} unidades</div>
+                                    <small class="text-muted">A dos meses</small>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Predicción {{ mes3_nombre }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes3 }} unidades</div>
+                                    <small class="text-muted">A tres meses</small>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Total predicción 3 meses</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prediccion }} unidades</div>
+                                    <small class="text-muted">Predicción generada: {{ fecha_prediccion }}</small>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Líneas - Toma todo el ancho -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-header bg-success text-white py-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold">
+                                    <i class="fas fa-chart-line mr-2"></i> Predicción de Ventas - Próximos 3 Meses
+                                </h6>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                {{ grafico_prediccion_html | safe }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabla de medicamentos TOP 20 -->
+            <div class="row">
+                <!-- Sección para Top Medicamentos -->
+                <div class="col-12 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-warning text-white py-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="font-weight-bold mb-0"><i class="fas fa-star mr-2"></i>Medicamentos con Mayor Diferencia Stock-Demanda</h6>
+                                    <small class="text-black-50">Priorización para reabastecimiento (rojo: urgente | amarillo: necesita atención | verde: stock suficiente)</small>
+                                    {% if paginator %}
+                                    <small class="d-block text-black-50">Mostrando página {{ pagina_actual }} de {{ paginator.num_pages }} ({{ paginator.count }} medicamentos en total)</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-0 d-flex flex-column" style="height: calc(100% - 65px);">
+                            <div class="table-responsive" style="flex: 1; overflow-y: auto; max-height: 100%;">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Medicamento</th>
+                                            <th>Stock Actual</th>
+                                            <th>{{ mes1_nombre }}</th>
+                                            <th>{{ mes2_nombre }}</th>
+                                            <th>{{ mes3_nombre }}</th>
+                                            <th>Total</th>
+                                            <th>Promedio Mensual</th>
+                                            <th>Diferencia</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for med in medicamentos_prediccion %}
+                                        <tr {% if med.diferencia > med.stock_actual and med.diferencia > 10 %}class="table-danger"{% elif med.diferencia > 0 %}class="table-warning"{% else %}class="table-success"{% endif %}>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ med.medicamento_nombre }}</td>
+                                            <td>{{ med.stock_actual }}</td>
+                                            <td>{{ med.mes_1_cantidad }} unidades</td>
+                                            <td>{{ med.mes_2_cantidad }} unidades</td>
+                                            <td>{{ med.mes_3_cantidad }} unidades</td>
+                                            <td>{{ med.total_prediccion }} unidades</td>
+                                            <td>{{ med.promedio_mensual|floatformat:1 }} unidades</td>
+                                            <td>
+                                                {% if med.diferencia > 0 %}
+                                                    <span class="text-danger font-weight-bold">-{{ med.diferencia }}</span>
+                                                {% else %}
+                                                    <span class="text-success font-weight-bold">+{{ med.diferencia|cut:"-" }}</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="10" class="text-center">
+                                                <div class="alert alert-info m-3">
+                                                    <i class="fas fa-info-circle mr-2"></i> No hay datos disponibles para predicción.
+                                                    <br>
+                                                    Asegúrese de contar con suficientes datos históricos de ventas.
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                
+                                <!-- Controles de paginación -->
+                                {% if medicamentos_prediccion.paginator.num_pages > 1 %}
+                                <div class="d-flex justify-content-center py-2 bg-light border-top">
+                                    <nav aria-label="Navegación de medicamentos">
+                                        <ul class="pagination mb-0">
+                                            {% if medicamentos_prediccion.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?pagina={{ medicamentos_prediccion.previous_page_number }}" aria-label="Anterior">
+                                                    <span aria-hidden="true">&laquo;</span>
+                                                </a>
+                                            </li>
+                                            {% else %}
+                                            <li class="page-item disabled">
+                                                <a class="page-link" href="#" aria-label="Anterior">
+                                                    <span aria-hidden="true">&laquo;</span>
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                            
+                                            {% for num in medicamentos_prediccion.paginator.page_range %}
+                                                {% if medicamentos_prediccion.number == num %}
+                                                <li class="page-item active">
+                                                    <a class="page-link" href="?pagina={{ num }}">{{ num }}</a>
+                                                </li>
+                                                {% else %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?pagina={{ num }}">{{ num }}</a>
+                                                </li>
+                                                {% endif %}
+                                            {% endfor %}
+                                            
+                                            {% if medicamentos_prediccion.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?pagina={{ medicamentos_prediccion.next_page_number }}" aria-label="Siguiente">
+                                                    <span aria-hidden="true">&raquo;</span>
+                                                </a>
+                                            </li>
+                                            {% else %}
+                                            <li class="page-item disabled">
+                                                <a class="page-link" href="#" aria-label="Siguiente">
+                                                    <span aria-hidden="true">&raquo;</span>
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </nav>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información sobre el modelo predictivo -->
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="m-0 font-weight-bold"><i class="fas fa-info-circle mr-2"></i>Acerca del Modelo Predictivo</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Modelo:</strong> Red Bayesiana Dinámica (DBN)</p>
+                            <p><strong>Datos de entrada:</strong> Historial de ventas de los últimos 3 años</p>
+                            <p><strong>Enfoque:</strong> Modelado probabilístico de patrones de demanda a nivel mensual</p>
+                            <p><strong>Horizonte de predicción:</strong> 3 meses hacia adelante</p>
+                            <p><strong>Recomendación:</strong> Utilice estas predicciones como guía para la planificación de inventario considerando un margen de seguridad adicional según la criticidad de cada medicamento.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts específicos para el dashboard -->
+<script>
+    $(document).ready(function() {
+        // Refrescar datos al hacer clic en el botón
+        $('#refreshData').click(function() {
+            location.reload();
+        });
+    });
+</script>
+
+<!-- Script para modificar los gráficos de Plotly -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Función para simplificar los controles de Plotly
+        function simplificarControlesPlotly() {
+            // Comprobar si hay gráficos de Plotly
+            if (typeof Plotly !== 'undefined') {
+                // Buscar todos los gráficos de Plotly en la página
+                var graficos = document.querySelectorAll('.js-plotly-plot');
+                
+                graficos.forEach(function(grafico) {
+                    // Obtener el ID del gráfico
+                    var id = grafico.id;
+                    
+                    // Actualizar la configuración del gráfico
+                    if (id) {
+                        Plotly.update(id, {}, {
+                            // Quitar controles y botones innecesarios
+                            modeBarButtonsToRemove: ['select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'pan2d', 'zoom2d', 'resetViews'],
+                            displaylogo: false,
+                            // Mantener solo opciones esenciales
+                            displayModeBar: true,
+                            responsive: true,
+                            scrollZoom: false
+                        });
+                    }
+                });
+            }
+        }
+        
+        // Intentar modificar los gráficos cuando la página esté cargada
+        simplificarControlesPlotly();
+        
+        // También intentar después de 1 segundo por si los gráficos se cargan de forma asíncrona
+        setTimeout(simplificarControlesPlotly, 1000);
+    });
+</script>
+
+<!-- Estilos específicos para el dashboard -->
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    
+    .chart-container {
+        width: 100%;
+        min-height: 300px;
+    }
+    
+    /* Estilos para ocultar controles innecesarios de Plotly */
+    .modebar-group:not(:first-child) {
+        display: none !important;
+    }
+</style>
+{% endblock %}

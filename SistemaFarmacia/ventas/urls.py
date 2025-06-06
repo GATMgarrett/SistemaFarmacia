@@ -66,6 +66,7 @@ urlpatterns = [
     path('Dashboard/Inventario/', views.dashboard_view_inventario, name='Dashboard_inventario'),
     path('Dashboard/Proveedores/', views.dashboard_view_proveedores, name='Dashboard_proveedores'),
     path('Dashboard/Usuarios/', views.dashboard_view_usuarios, name='Dashboard_usuarios'),
+    path('Dashboard/Predicciones/', views.dashboard_view_predicciones, name='Dashboard_predicciones'),
     
     # Vistas para el login con 2FA
     path('login/', login_view, name='login'),  # Mantener esta URL para compatibilidad

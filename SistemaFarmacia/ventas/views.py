@@ -1,6 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
+from .prediccion_mensual_medicamentos import main as ejecutar_prediccion, generar_predicciones, cargar_datos_ventas_mensuales, completar_series_mensuales, filtrar_medicamentos_relevantes
+import logging
+from datetime import datetime, timedelta
+from django.db.models import Sum
+from .models import LoteMedicamento
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+# Configurar logger
+logger = logging.getLogger(__name__)
 from django.db import transaction
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, HttpResponseForbidden, Http404
 from django.urls import reverse
@@ -877,6 +886,185 @@ def generar_grafico_con_plotly(df):
     return fig.to_html(full_html=False, include_plotlyjs='cdn', config=config)
 
 # Actualizamos la vista para incluir el gráfico interactivo
+@login_required
+def dashboard_view_predicciones(request):
+    # Obtener los grupos del usuario para permisos
+    grupos_usuario = request.user.groups.values_list('name', flat=True)
+    
+    try:
+        # Parámetros para la predicción
+        anios_historia = 3  # Años de historia a considerar
+        horizonte_prediccion = 3  # Meses a predecir hacia adelante
+        min_ventas_totales = 5  # Ventas mínimas para considerar un medicamento
+        min_meses_con_ventas = 3  # Mínimo de meses con ventas para considerar un medicamento
+        
+        # 1. Cargar datos históricos
+        df_mensual = cargar_datos_ventas_mensuales(anios=anios_historia)
+        
+        if df_mensual is None or df_mensual.empty:
+            messages.error(request, "No se pudieron cargar datos históricos de ventas.")
+            return render(request, 'dashboard_predicciones.html', {'error': True})
+        
+        # 2. Completar series temporales
+        df_completo = completar_series_mensuales(df_mensual)
+        
+        # 3. Filtrar medicamentos relevantes
+        medicamentos_relevantes = filtrar_medicamentos_relevantes(
+            df_completo, 
+            min_ventas=min_ventas_totales,
+            min_meses=min_meses_con_ventas
+        )
+        
+        # 4. Generar predicciones
+        df_predicciones = generar_predicciones(
+            df_completo,
+            medicamentos_relevantes,
+            horizonte=horizonte_prediccion
+        )
+        
+        if df_predicciones is None or df_predicciones.empty:
+            messages.error(request, "No se pudieron generar predicciones.")
+            return render(request, 'dashboard_predicciones.html', {'error': True, 'grupos': grupos_usuario})
+        
+        # Calcular total_prediccion si no existe
+        if 'total_prediccion' not in df_predicciones.columns:
+            # Calcular la suma de las predicciones por mes para cada medicamento
+            columnas_mes = [f'mes_{i}_cantidad' for i in range(1, horizonte_prediccion + 1)]
+            df_predicciones['total_prediccion'] = df_predicciones[columnas_mes].sum(axis=1)
+            
+            # Calcular también el promedio mensual si no existe
+            if 'promedio_mensual' not in df_predicciones.columns:
+                df_predicciones['promedio_mensual'] = df_predicciones['total_prediccion'] / horizonte_prediccion
+        
+        # Preparar datos para el gráfico
+        meses_futuros = []
+        fecha_actual = datetime.now()
+        for i in range(1, horizonte_prediccion + 1):
+            mes_futuro = fecha_actual + timedelta(days=30 * i)
+            meses_futuros.append(mes_futuro.strftime('%B %Y'))
+        
+        # Obtener todos los medicamentos para el gráfico, ordenados por predicción total
+        todos_medicamentos = df_predicciones.sort_values('total_prediccion', ascending=False)
+        
+        # Obtener stock actual de cada medicamento
+        stocks = {}
+        try:
+            lotes_medicamentos = LoteMedicamento.objects.filter(
+                medicamento__id__in=todos_medicamentos['medicamento_id'].tolist(),
+                activo=True
+            ).values('medicamento').annotate(stock_actual=Sum('cantidad'))
+            
+            # Crear diccionario de medicamento_id -> stock_actual
+            for lote in lotes_medicamentos:
+                stocks[lote['medicamento']] = lote['stock_actual'] or 0
+            
+            logger.info(f"Stock obtenido para {len(stocks)} medicamentos")
+        except Exception as e:
+            logger.error(f"Error al obtener stock actual: {str(e)}")
+        
+        # Añadir información de stock y diferencia al DataFrame
+        todos_medicamentos['stock_actual'] = todos_medicamentos['medicamento_id'].map(lambda x: stocks.get(x, 0))
+        todos_medicamentos['diferencia'] = todos_medicamentos['total_prediccion'] - todos_medicamentos['stock_actual']
+        
+        # Ordenar por diferencia (mayor diferencia primero)
+        todos_medicamentos_ordenados = todos_medicamentos.sort_values('diferencia', ascending=False)
+        
+        # Obtener top 60 medicamentos para la tabla paginada (20 por página, 3 páginas)
+        top_medicamentos = todos_medicamentos_ordenados.head(60)
+        
+        # Convertir a lista de diccionarios para la paginación
+        lista_medicamentos = top_medicamentos.to_dict('records')
+        
+        # Implementar paginación
+        pagina = request.GET.get('pagina', 1)
+        items_por_pagina = 20
+        
+        paginator = Paginator(lista_medicamentos, items_por_pagina)
+        try:
+            medicamentos_pagina = paginator.page(pagina)
+        except PageNotAnInteger:
+            # Si la página no es un entero, mostrar la primera página
+            medicamentos_pagina = paginator.page(1)
+        except EmptyPage:
+            # Si la página está fuera de rango, mostrar la última página
+            medicamentos_pagina = paginator.page(paginator.num_pages)
+        
+        # Preparar datos para el gráfico con TODOS los medicamentos
+        datos_grafico = {
+            'medicamentos': todos_medicamentos['medicamento_nombre'].tolist(),
+            'meses': meses_futuros,
+            'predicciones': []
+        }
+        
+        # Para cada medicamento, obtener sus predicciones mensuales
+        for i, med in todos_medicamentos.iterrows():
+            datos_grafico['predicciones'].append([
+                med[f'mes_1_cantidad'],
+                med[f'mes_2_cantidad'],
+                med[f'mes_3_cantidad']
+            ])
+        
+        # Generar gráfico de líneas para las predicciones
+        import plotly.graph_objects as go
+        
+        fig = go.Figure()
+        
+        # Añadir una línea para cada medicamento
+        for i, medicamento in enumerate(datos_grafico['medicamentos']):
+            fig.add_trace(go.Scatter(
+                x=datos_grafico['meses'],
+                y=datos_grafico['predicciones'][i],
+                mode='lines+markers',
+                name=medicamento
+            ))
+        
+        fig.update_layout(
+            title='<b>Predicción de Ventas - Próximos 3 Meses</b>',
+            xaxis_title='<b>Mes</b>',
+            yaxis_title='<b>Unidades</b>',
+            legend_title='<b>Medicamentos</b>',
+            template='plotly_white'
+        )
+        
+        grafico_html = fig.to_html(full_html=False)
+        
+        # Calcular totales mensuales para los indicadores
+        total_mes1 = top_medicamentos['mes_1_cantidad'].sum()
+        total_mes2 = top_medicamentos['mes_2_cantidad'].sum()
+        total_mes3 = top_medicamentos['mes_3_cantidad'].sum()
+        total_prediccion = top_medicamentos['total_prediccion'].sum()
+        
+        # Obtener las fechas de los próximos 3 meses para mostrar en los indicadores
+        fecha_actual = datetime.now()
+        mes1 = (fecha_actual + timedelta(days=30)).strftime('%B %Y')
+        mes2 = (fecha_actual + timedelta(days=60)).strftime('%B %Y')
+        mes3 = (fecha_actual + timedelta(days=90)).strftime('%B %Y')
+        
+        contexto = {
+            'grupos': grupos_usuario,
+            'grafico_prediccion_html': grafico_html,
+            'medicamentos_prediccion': medicamentos_pagina,
+            'paginator': paginator,
+            'total_mes1': total_mes1,
+            'total_mes2': total_mes2,
+            'total_mes3': total_mes3,
+            'total_prediccion': total_prediccion,
+            'mes1_nombre': mes1,
+            'mes2_nombre': mes2,
+            'mes3_nombre': mes3,
+            'fecha_prediccion': fecha_actual.strftime('%Y-%m-%d'),
+            'pagina_actual': int(pagina)
+        }
+        
+        return render(request, 'dashboard_predicciones.html', contexto)
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"Error en dashboard_view_predicciones: {str(e)}")
+        logger.error(traceback.format_exc())
+        messages.error(request, f"Error al generar predicciones: {str(e)}")
+        return render(request, 'dashboard_predicciones.html', {'error': True})
+
 @login_required
 def dashboard_view_ventas(request):
     # Obtener los grupos del usuario para permisos

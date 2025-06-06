@@ -187,6 +187,16 @@
               </a>
             </li>
             {% endif %}
+            
+            <!-- Dashboard de predicciones -->
+            {% if "Administrador" in grupos or "Farmaceutico" in grupos %}
+            <li class="nav-item">
+              <a href="{% url 'Dashboard_predicciones' %}" class="nav-link">
+                <i class="nav-icon fas fa-chart-bar"></i>
+                <p>Predicción de demanda</p>
+              </a>
+            </li>
+            {% endif %}
 
             <li class="nav-header">SISTEMA</li>
 
