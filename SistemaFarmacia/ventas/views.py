@@ -27,6 +27,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.db.models.functions import TruncMonth, TruncWeek, TruncDay, TruncYear, ExtractWeekDay
+from .forms import UsuarioForm
 
 # Importaciones de datetime
 from datetime import datetime, date, timedelta
