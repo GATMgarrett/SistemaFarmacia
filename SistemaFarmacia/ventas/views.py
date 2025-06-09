@@ -970,9 +970,36 @@ def dashboard_view_predicciones(request):
             # Si la página está fuera de rango, mostrar la última página
             medicamentos_pagina = paginator.page(paginator.num_pages)
         
-        # Preparar datos para el gráfico con TODOS los medicamentos
+        # Obtener las categorías de los medicamentos
+        try:
+            # Conectar medicamentos con sus categorías
+            medicamentos_info = {}
+            medicamentos_categoria = {}
+            categorias_set = set()
+            
+            for med_id in todos_medicamentos['medicamento_id']:
+                try:
+                    med = Medicamentos.objects.get(id=med_id)
+                    categoria = med.categoria.nombre_categoria if med.categoria else "Sin Categoría"
+                    medicamentos_categoria[med.nombre] = categoria
+                    categorias_set.add(categoria)
+                    medicamentos_info[med.nombre] = {
+                        'id': med_id,
+                        'categoria': categoria
+                    }
+                except Medicamentos.DoesNotExist:
+                    logger.error(f"Medicamento con ID {med_id} no encontrado")
+            
+            categorias_list = sorted(list(categorias_set))
+        except Exception as e:
+            logger.error(f"Error al obtener categorías: {e}")
+            categorias_list = ["Sin Categoría"]
+            medicamentos_categoria = {med: "Sin Categoría" for med in todos_medicamentos['medicamento_nombre'].tolist()}
+        
+        # Preparar datos para el gráfico por categoría
         datos_grafico = {
             'medicamentos': todos_medicamentos['medicamento_nombre'].tolist(),
+            'categorias': [medicamentos_categoria.get(med, "Sin Categoría") for med in todos_medicamentos['medicamento_nombre'].tolist()],
             'meses': meses_futuros,
             'predicciones': []
         }
@@ -985,26 +1012,111 @@ def dashboard_view_predicciones(request):
                 med[f'mes_3_cantidad']
             ])
         
-        # Generar gráfico de líneas para las predicciones
+        # Generar gráfico de líneas con filtro por categoría
         import plotly.graph_objects as go
+        import plotly.colors as colors
         
         fig = go.Figure()
         
-        # Añadir una línea para cada medicamento
+        # Crear un colormap
+        colores = colors.qualitative.Plotly + colors.qualitative.D3 + colors.qualitative.G10
+        color_map = {}
+        for i, med in enumerate(datos_grafico['medicamentos']):
+            color_map[med] = colores[i % len(colores)]
+        
+        # Buscar la categoría "Antiácidos" para usarla como default
+        indice_antiacidos = -1
+        indice_default = 0
+        
+        for i, cat in enumerate(categorias_list):
+            if 'antiácido' in cat.lower() or 'antiacido' in cat.lower():
+                indice_antiacidos = i
+                indice_default = i
+                break
+        
+        # Añadir una línea para cada medicamento con visibilidad según su categoría
         for i, medicamento in enumerate(datos_grafico['medicamentos']):
+            categoria = datos_grafico['categorias'][i]
+            
+            # Determinar si el medicamento debe estar visible inicialmente
+            visible = False
+            if indice_antiacidos >= 0:
+                visible = (categoria.lower() == categorias_list[indice_default].lower())
+            else:
+                visible = (categoria.lower() == categorias_list[0].lower())
+                
             fig.add_trace(go.Scatter(
                 x=datos_grafico['meses'],
                 y=datos_grafico['predicciones'][i],
                 mode='lines+markers',
-                name=medicamento
+                name=medicamento,
+                legendgroup=categoria,
+                visible=visible,  # Solo visible si es de la categoría por defecto
+                hovertemplate=
+                '<b>%{x}</b><br>' +
+                'Cantidad: <b>%{y}</b><br>' +
+                f'Categoría: {categoria}<br>' +
+                '<extra></extra>',
+                line=dict(color=color_map[medicamento], width=2),
+                marker=dict(
+                    size=7,
+                    line=dict(width=1, color='DarkSlateGrey')
+                )
             ))
         
+        # Crear botones para cada categoría (sin "Todas las categorías")
+        buttons_categoria = []
+        for i, cat in enumerate(categorias_list):
+            # Crear una lista de visibilidad - True para medicamentos de esta categoría
+            visibility = []
+            for j, med in enumerate(datos_grafico['medicamentos']):
+                visibility.append(datos_grafico['categorias'][j] == cat)
+            
+            # Añadir botón para esta categoría
+            buttons_categoria.append(
+                dict(
+                    label=cat,
+                    method='update',
+                    args=[{'visible': visibility}]
+                )
+            )
+        
+        # Configuración del diseño
         fig.update_layout(
             title='<b>Predicción de Ventas - Próximos 3 Meses</b>',
             xaxis_title='<b>Mes</b>',
             yaxis_title='<b>Unidades</b>',
             legend_title='<b>Medicamentos</b>',
-            template='plotly_white'
+            template='plotly_white',
+            # Menú desplegable para filtrar por categoría
+            updatemenus=[
+                {
+                    'buttons': buttons_categoria,
+                    'direction': 'down',
+                    'showactive': True,
+                    'x': 0.12,
+                    'y': 1.13,
+                    'xanchor': 'center',
+                    'yanchor': 'top',
+                    'active': indice_default,  # La categoría Antiácidos está activa si se encontró
+                    'bgcolor': 'rgba(255, 255, 255, 0.9)',
+                    'bordercolor': '#ddd',
+                    'font': {'size': 11},
+                    'pad': {'r': 10, 't': 10, 'b': 10, 'l': 10}
+                }
+            ],
+            # Añadir anotaciones para etiquetar el menú desplegable
+            annotations=[
+                dict(
+                    text="<b>Categoría:</b>",
+                    x=0.02,
+                    y=1.15,
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=11, color="#333")
+                )
+            ]
         )
         
         grafico_html = fig.to_html(full_html=False)
