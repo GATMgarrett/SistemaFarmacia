@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load ventas_filters %}
 
 {% block content %}
 <div class="container-fluid">
@@ -28,7 +29,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                         Total Usuarios</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_usuarios|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_usuarios|format_number|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-user-friends fa-2x text-gray-300"></i>
@@ -45,7 +46,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                         Ventas por usuario</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_por_usuario|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_por_usuario|format_number|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-chart-line fa-2x text-gray-300"></i>
@@ -63,7 +64,7 @@
                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                         Usuario del mes</div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">{{ usuario_mes.nombre|default:'N/A' }}</div>
-                                    <div class="text-xs text-gray-600">{{ usuario_mes.ventas }} ventas, {{ usuario_mes.ingresos|floatformat:2 }} Bs</div>
+                                    <div class="text-xs text-gray-600">{{ usuario_mes.ventas|format_number }} ventas, {{ usuario_mes.ingresos|format_number }} Bs</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-trophy fa-2x text-gray-300"></i>
@@ -178,9 +179,9 @@
                                                 <i class="fas fa-user text-primary mr-2"></i>
                                                 {{ vendedor.nombre }}
                                             </td>
-                                            <td>{{ vendedor.total_ventas }}</td>
-                                            <td>{{ vendedor.monto_total }} Bs</td>
-                                            <td>{{ vendedor.promedio_venta }} Bs</td>
+                                            <td>{{ vendedor.total_ventas|format_number }}</td>
+                                            <td>{{ vendedor.monto_total|format_number }} Bs</td>
+                                            <td>{{ vendedor.promedio_venta|format_number }} Bs</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>

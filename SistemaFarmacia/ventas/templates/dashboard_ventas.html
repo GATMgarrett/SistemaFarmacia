@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load ventas_filters %}
 
 {% block content %}
 <div class="container-fluid">
@@ -28,7 +29,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                         Ventas del mes</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_mes|default:'0' }} Bs</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_mes|format_number|default:'0' }} Bs</div>
                                     <small class="text-muted">Período: Mes actual</small>
                                 </div>
                                 <div class="col-auto">
@@ -46,7 +47,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                         Ventas anuales</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_anual|default:'0' }} Bs</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ventas_anual|format_number|default:'0' }} Bs</div>
                                     <small class="text-muted">Período: Año actual</small>
                                 </div>
                                 <div class="col-auto">
@@ -64,7 +65,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                         Productos vendidos</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ productos_vendidos|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ productos_vendidos|format_number|default:'0' }}</div>
                                     <small class="text-muted">Período: {{ fecha_inicio|default:'' }} al {{ fecha_fin|default:'' }}</small>
                                 </div>
                                 <div class="col-auto">
@@ -82,7 +83,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                         Clientes nuevos</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ clientes_nuevos|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ clientes_nuevos|format_number|default:'0' }}</div>
                                     <small class="text-muted">Período: {{ fecha_inicio|default:'' }} al {{ fecha_fin|default:'' }}</small>
                                 </div>
                                 <div class="col-auto">

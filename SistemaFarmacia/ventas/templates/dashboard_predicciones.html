@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load ventas_filters %}
 
 {% block content %}
 <div class="container-fluid">
@@ -28,7 +29,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                         Predicción {{ mes1_nombre }}</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes1 }} unidades</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes1|format_number }} unidades</div>
                                     <small class="text-muted">Próximo mes</small>
                                 </div>
                                 <div class="col-auto">
@@ -46,7 +47,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                         Predicción {{ mes2_nombre }}</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes2 }} unidades</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes2|format_number }} unidades</div>
                                     <small class="text-muted">A dos meses</small>
                                 </div>
                                 <div class="col-auto">
@@ -64,7 +65,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                         Predicción {{ mes3_nombre }}</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes3 }} unidades</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_mes3|format_number }} unidades</div>
                                     <small class="text-muted">A tres meses</small>
                                 </div>
                                 <div class="col-auto">
@@ -82,7 +83,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                         Total predicción 3 meses</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prediccion }} unidades</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_prediccion|format_number }} unidades</div>
                                     <small class="text-muted">Predicción generada: {{ fecha_prediccion }}</small>
                                 </div>
                                 <div class="col-auto">
@@ -151,17 +152,17 @@
                                         <tr {% if med.diferencia > med.stock_actual and med.diferencia > 10 %}class="table-danger"{% elif med.diferencia > 0 %}class="table-warning"{% else %}class="table-success"{% endif %}>
                                             <td>{{ forloop.counter }}</td>
                                             <td>{{ med.medicamento_nombre }}</td>
-                                            <td>{{ med.stock_actual }}</td>
-                                            <td>{{ med.mes_1_cantidad }} unidades</td>
-                                            <td>{{ med.mes_2_cantidad }} unidades</td>
-                                            <td>{{ med.mes_3_cantidad }} unidades</td>
-                                            <td>{{ med.total_prediccion }} unidades</td>
-                                            <td>{{ med.promedio_mensual|floatformat:1 }} unidades</td>
+                                            <td>{{ med.stock_actual|format_number }}</td>
+                                             <td>{{ med.mes_1_cantidad|format_number }} unidades</td>
+                                             <td>{{ med.mes_2_cantidad|format_number }} unidades</td>
+                                             <td>{{ med.mes_3_cantidad|format_number }} unidades</td>
+                                             <td>{{ med.total_prediccion|format_number }} unidades</td>
+                                             <td>{{ med.promedio_mensual|format_number }} unidades</td>
                                             <td>
                                                 {% if med.diferencia > 0 %}
-                                                    <span class="text-danger font-weight-bold">-{{ med.diferencia }}</span>
+                                                    <span class="text-danger font-weight-bold">-{{ med.diferencia|format_number }}</span>
                                                 {% else %}
-                                                    <span class="text-success font-weight-bold">+{{ med.diferencia|cut:"-" }}</span>
+                                                    <span class="text-success font-weight-bold">+{{ med.diferencia|cut:"-"|format_number }}</span>
                                                 {% endif %}
                                             </td>
                                         </tr>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load ventas_filters %}
 
 {% block content %}
 <div class="container-fluid">
@@ -28,7 +29,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                         Total Proveedores</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_proveedores|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_proveedores|format_number|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-building fa-2x text-gray-300"></i>
@@ -45,7 +46,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                         Compras del mes</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ compras_mes|floatformat:2|default:'0.00' }} Bs</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ compras_mes|format_number|default:'0,00' }} Bs</div>
                                     <div class="text-xs text-gray-600">{{ rango_fechas_mes }}</div>
                                 </div>
                                 <div class="col-auto">
@@ -63,7 +64,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                         Productos comprados</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ productos_comprados|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ productos_comprados|format_number|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-boxes fa-2x text-gray-300"></i>
@@ -80,7 +81,7 @@
                             </div>
                             <div class="row no-gutters align-items-center">
                                 <div class="col-auto">
-                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ compras_anuales|floatformat:2|default:'0.00' }} Bs</div>
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ compras_anuales|format_number|default:'0,00' }} Bs</div>
                                     <div class="text-xs text-gray-600 mt-1">{{ rango_fechas_ano }}</div>
                                 </div>
                             </div>

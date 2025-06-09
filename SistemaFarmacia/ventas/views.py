@@ -531,13 +531,23 @@ def generar_grafico_barras(df, fecha_inicio, fecha_fin):
     # Crear un gráfico base
     fig = go.Figure()
     
-    # Obtener categorías únicas para menú desplegable
-    categorias = sorted(df_tops['categoria'].unique())
-    
-    # Crear un mapa de colores para mantener consistencia visual
+    # Importar módulo para colores de Plotly
     import plotly.colors as colors
-    colores = colors.qualitative.Plotly
-    color_map = {cat: colores[i % len(colores)] for i, cat in enumerate(categorias)}
+    
+    # Obtener categorías únicas para menú desplegable y buscar "Antiácidos"
+    categorias = sorted(df_tops['categoria'].unique())
+    indice_antiacidos = -1
+    indice_default = 0
+    
+    # Buscar la categoría "Antiácidos" para usarla como default
+    for i, cat in enumerate(categorias):
+        if 'antiácido' in cat.lower() or 'antiacido' in cat.lower():
+            indice_antiacidos = i
+            break
+    
+    # Si encontramos la categoría "Antiácidos", la usamos como default
+    if indice_antiacidos >= 0:
+        indice_default = indice_antiacidos
     
     # Crear trazas para cada categoría con visibilidad inicial
     for i, categoria in enumerate(categorias):
@@ -546,23 +556,13 @@ def generar_grafico_barras(df, fecha_inicio, fecha_fin):
             x=df_cat['medicamento'],
             y=df_cat['cantidad'],
             name=categoria,
-            marker_color=color_map[categoria],
+            marker_color=colors.qualitative.Plotly[i % len(colors.qualitative.Plotly)],
             hovertemplate='<b>%{x}</b><br>Cantidad: <b>%{y}</b><br>Categoría: ' + categoria + '<extra></extra>',
-            visible=(i == 0)  # Solo la primera categoría visible inicialmente
+            visible=(i == indice_default)  # La categoría Antiácidos visible inicialmente
         ))
     
-    # Crear los botones para el menú desplegable
+    # Crear botones para cada categoría
     buttons = []
-    
-    # Opción para mostrar todas las categorías
-    all_visible = [True] * len(categorias)
-    buttons.append(dict(
-        label="Todas las Categorías",
-        method="update",
-        args=[{"visible": all_visible}]
-    ))
-    
-    # Opciones para mostrar cada categoría individual
     for i, categoria in enumerate(categorias):
         visible = [False] * len(categorias)
         visible[i] = True
@@ -571,7 +571,7 @@ def generar_grafico_barras(df, fecha_inicio, fecha_fin):
             method="update",
             args=[{"visible": visible}]
         ))
-    
+        
     # Configurar título y tamaño
     fig.update_layout(
         title='<b>Top 5 Medicamentos por Categoría</b>',
@@ -649,7 +649,10 @@ def generar_grafico_barras(df, fecha_inicio, fecha_fin):
     return fig.to_html(full_html=False, include_plotlyjs='cdn', config=config)
 
 # Grafico de las ventas de medicamentos graficado de manera lineal
-def generar_grafico_con_plotly(df):
+def generar_grafico_con_plotly(df, fecha_inicio=None, fecha_fin=None):
+    # Importar colores al inicio para evitar errores
+    import plotly.colors as colors
+    
     fig = go.Figure()
     
     # Si el DataFrame está vacío, devolver un gráfico vacío con un mensaje
@@ -675,29 +678,28 @@ def generar_grafico_con_plotly(df):
         
         return fig.to_html(full_html=False, include_plotlyjs='cdn', config=config)
     
-    # Obtener categorías, tipos y medicamentos únicos
+    # Obtener categorías y medicamentos únicos
     categorias = sorted(df['categoria'].unique())
-    tipos = sorted(df['tipo'].unique())
     medicamentos = df['medicamento'].unique()
     
-    # Crear un colormap para que cada medicamento tenga un color consistente
-    import plotly.colors as colors
+    # Buscar la categoría "Antiácidos" para usarla como default
+    indice_antiacidos = -1
+    indice_default = 0
+    
+    for i, cat in enumerate(categorias):
+        if 'antiácido' in cat.lower() or 'antiacido' in cat.lower():
+            indice_antiacidos = i
+            indice_default = i
+            break
+    
+    # Colores para cada medicamento
     colores = colors.qualitative.Plotly + colors.qualitative.D3 + colors.qualitative.G10
     color_map = {}
     for i, med in enumerate(medicamentos):
         color_map[med] = colores[i % len(colores)]
     
-    # Crear los botones para filtrar por categoría
+    # Crear una lista de botones para filtrar por categoría (sin "Todas las categorías")
     buttons_categoria = []
-    
-    # Botón para mostrar todas las categorías
-    buttons_categoria.append(
-        dict(
-            label = 'Todas las Categorías',
-            method = 'update',
-            args = [{'visible': [True] * len(medicamentos)}]
-        )
-    )
     
     # Mapeo de medicamentos a su índice en la lista de trazas
     med_to_index = {}
@@ -708,12 +710,19 @@ def generar_grafico_con_plotly(df):
         datos_filtrados = df[df['medicamento'] == medicamento]
         
         if not datos_filtrados.empty:
-            # Obtener la categoría y tipo para este medicamento (tomamos el primero si hay varios)
+            # Obtener la categoría para este medicamento (tomamos el primero si hay varios)
             categoria = datos_filtrados['categoria'].iloc[0]
-            tipo = datos_filtrados['tipo'].iloc[0]
             
             # Guardar el índice de esta traza para el medicamento
             med_to_index[medicamento] = i
+            
+            # Determinar visibilidad inicial: visible solo si pertenece a la categoría Antiácidos
+            # o a la primera categoría si no existe Antiácidos
+            is_default_category = False
+            if indice_antiacidos >= 0:
+                is_default_category = (categoria.lower() == categorias[indice_default].lower())
+            else:
+                is_default_category = (categoria.lower() == categorias[0].lower())
             
             fig.add_trace(go.Scatter(
                 x=datos_filtrados['fecha'],
@@ -721,11 +730,11 @@ def generar_grafico_con_plotly(df):
                 mode='lines+markers',
                 name=f"{medicamento}",
                 legendgroup=categoria,
+                visible=is_default_category,  # Inicialmente visible solo si es la categoría por defecto
                 hovertemplate=
                 '<b>%{x|%d-%m-%Y}</b><br>' +
                 'Cantidad: <b>%{y}</b><br>' +
                 f'Categoría: {categoria}<br>' +
-                f'Tipo: {tipo}<br>' +
                 '<extra></extra>',
                 line=dict(color=color_map[medicamento], width=2.5),
                 marker=dict(
@@ -734,8 +743,8 @@ def generar_grafico_con_plotly(df):
                 )
             ))
     
-    # Crear botones para cada categoría
-    for cat in categorias:
+    # Crear botones para cada categoría (sin "Todas las categorías")
+    for i, cat in enumerate(categorias):
         # Crear una lista de visibilidad - True para medicamentos de esta categoría, False para otros
         visibility = []
         for med in medicamentos:
@@ -755,51 +764,19 @@ def generar_grafico_con_plotly(df):
             )
         )
     
-    # Crear los botones para filtrar por tipo
-    buttons_tipo = []
-    
-    # Botón para mostrar todos los tipos
-    buttons_tipo.append(
-        dict(
-            label = 'Todos los Tipos',
-            method = 'update',
-            args = [{'visible': [True] * len(medicamentos)}]
-        )
-    )
-    
-    # Crear botones para cada tipo
-    for tipo in tipos:
-        # Crear una lista de visibilidad - True para medicamentos de este tipo, False para otros
-        visibility = []
-        for med in medicamentos:
-            # Si el medicamento es de este tipo, hacerlo visible
-            datos_med = df[df['medicamento'] == med]
-            if not datos_med.empty and datos_med['tipo'].iloc[0] == tipo:
-                visibility.append(True)
-            else:
-                visibility.append(False)
-        
-        # Añadir el botón
-        buttons_tipo.append(
-            dict(
-                label = tipo,
-                method = 'update',
-                args = [{'visible': visibility}]
-            )
-        )
-    
-    # Configurar el diseño
+    # Configurar el diseño - solo incluyendo filtro por categoría, sin filtro por tipo
     fig.update_layout(
         title="<b>Histórico de Ventas</b>",
         xaxis={
             'title': "<b>Fecha</b>",
-            'tickfont': {'size': 12},
+            'tickformat': '%d-%m-%Y',
+            'tickangle': -45,
+            'tickfont': {'size': 10},
+            'nticks': 10,
             'gridcolor': 'rgba(220, 220, 220, 0.3)',
             'showgrid': True,
             'showline': True,
-            'linewidth': 1,
-            'linecolor': 'lightgray',
-            'zeroline': False
+            'linewidth': 1
         },
         yaxis={
             'title': "<b>Cantidad Vendida</b>",
@@ -807,81 +784,84 @@ def generar_grafico_con_plotly(df):
             'gridcolor': 'rgba(220, 220, 220, 0.3)',
             'showgrid': True,
             'showline': True,
-            'linewidth': 1,
-            'linecolor': 'lightgray',
-            'zeroline': False
+            'linewidth': 1
         },
-        legend={
-            'title': '<b>Medicamentos</b>',
-            'font': {'size': 13, 'family': 'Arial, sans-serif'},
-            'orientation': 'v',
-            'y': 1,
-            'x': 1.02,
-            'xanchor': 'left',
-            'yanchor': 'top',
-            'bgcolor': 'rgba(255, 255, 255, 0.9)',
-            'bordercolor': '#ddd',
-            'borderwidth': 1,
-            'itemclick': 'toggle',
-            'itemdoubleclick': 'toggle'
-        },
-        margin=dict(l=50, r=20, t=100, b=80, pad=5),
-        template="plotly_white",
-        hovermode="closest",
-        hoverlabel={
-            'bgcolor': 'white',
-            'bordercolor': '#ddd'
+        margin={
+            'l': 50, 'r': 30,
+            'b': 50, 't': 80,
+            'pad': 5
         },
         height=500,
+        hovermode='closest',
+        legend={
+            'orientation': "h",
+            'y': -0.2,
+            'x': 0.5,
+            'xanchor': 'center'
+        },
         autosize=True,
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        # Añadir menús desplegables para filtrar
+        # Menú desplegable SOLO para filtrar por categoría (sin filtro por tipo)
         updatemenus=[
-            # Menú para categorías
-            dict(
-                buttons=buttons_categoria,
-                direction="down",
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.1,
-                xanchor="left",
-                y=1.15,
-                yanchor="top",
-                bgcolor='rgba(255, 255, 255, 0.9)',
-                bordercolor='#ddd',
-                font=dict(size=12),
-                name='Filtrar por Categoría'
-            ),
-            # Menú para tipos
-            dict(
-                buttons=buttons_tipo,
-                direction="down",
-                pad={"r": 10, "t": 10},
-                showactive=True,
-                x=0.5,
-                xanchor="left",
-                y=1.15,
-                yanchor="top",
-                bgcolor='rgba(255, 255, 255, 0.9)',
-                bordercolor='#ddd',
-                font=dict(size=12),
-                name='Filtrar por Tipo'
-            )
+            {
+                'buttons': buttons_categoria,
+                'direction': 'down',
+                'showactive': True,
+                'x': 0.12,
+                'y': 1.13,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'active': indice_default,  # La categoría Antiácidos está activa si se encontró
+                'bgcolor': 'rgba(255, 255, 255, 0.9)',
+                'bordercolor': '#ddd',
+                'font': {'size': 11},
+                'pad': {'r': 10, 't': 10, 'b': 10, 'l': 10}
+            }
         ],
-        # Etiquetas para los menús
+        # Añadir anotaciones para etiquetar el menú desplegable (SOLO CATEGORÍA, NO TIPO)
         annotations=[
-            dict(text="<b>Categoría:</b>", x=0.005, y=1.12, xref="paper", yref="paper",
-                 showarrow=False, font=dict(size=13, color="#333")),
-            dict(text="<b>Tipo:</b>", x=0.405, y=1.12, xref="paper", yref="paper",
-                 showarrow=False, font=dict(size=13, color="#333"))
+            dict(
+                text="<b>Categoría:</b>",
+                x=0.02,
+                y=1.15,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=11, color="#333")
+            )
         ]
     )
+    
+    # Si se proporcionaron fechas, agregar anotación de período
+    if fecha_inicio and fecha_fin:
+        fig.update_layout(
+            annotations=fig.layout.annotations + (
+                dict(
+                    text="<b>Período: </b>" + fecha_inicio.strftime('%d/%m/%Y') + " al " + fecha_fin.strftime('%d/%m/%Y'),
+                    x=1,
+                    y=1.11,
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=10),
+                    align="right",
+                    bgcolor="rgba(255, 255, 255, 0.8)",
+                    borderpad=4
+                ),
+            )
+        )
     
     # Configuración simplificada
     config = {
         'responsive': True,
-        'displaylogo': False
+        'displaylogo': False,
+        'modeBarButtonsToRemove': ['pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
+        'displayModeBar': True,
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'grafico_ventas'
+        }
     }
     
     return fig.to_html(full_html=False, include_plotlyjs='cdn', config=config)
@@ -1091,8 +1071,8 @@ def dashboard_view_ventas(request):
             fecha_fin = timezone.now().date()
             fecha_inicio = fecha_fin - timedelta(days=180)  # 6 meses (aproximadamente)
     
-    # Obtener datos de ventas en el rango de fechas
-    df_ventas = obtener_datos_ventas(fecha_inicio, fecha_fin, categoria_id, tipo_id)
+    # Obtener datos de ventas en el rango de fechas - eliminando filtro tipo_id
+    df_ventas = obtener_datos_ventas(fecha_inicio, fecha_fin, categoria_id, None)
     
     # Si no hay datos, crear un DataFrame vacío simple
     if df_ventas.empty:
@@ -1112,12 +1092,11 @@ def dashboard_view_ventas(request):
     # Obtener los datos para la tabla de top productos vendidos
     top_productos = obtener_top_productos(fecha_inicio, fecha_fin)
     
-    # Obtener todas las categorías y tipos para los filtros
-    from ventas.models import Categorias, Tipos
+    # Obtener solo categorías para los filtros
+    from ventas.models import Categorias
     categorias = Categorias.objects.filter(activo=True).order_by('nombre_categoria')
-    tipos = Tipos.objects.filter(activo=True).order_by('nombre_tipo')
     
-    # Pasar solo los datos y gráficos al contexto
+    # Pasar solo los datos y gráficos al contexto - eliminando tipos
     contexto = {
         'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
         'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
@@ -1130,7 +1109,6 @@ def dashboard_view_ventas(request):
         'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),  # Fecha fin seleccionada
         'top_productos': top_productos,  # Top productos vendidos
         'categorias': categorias,  # Lista de categorías para el filtro
-        'tipos': tipos,  # Lista de tipos para el filtro
     }
 
     return render(request, 'dashboard_ventas.html', contexto)

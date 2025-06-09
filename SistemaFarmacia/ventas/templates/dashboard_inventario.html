@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load ventas_filters %}
 
 {% block content %}
 <div class="container-fluid">
@@ -28,7 +29,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                         Productos en inventario</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_productos|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_productos|format_number|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-box fa-2x text-gray-300"></i>
@@ -45,7 +46,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                         Próximos a vencer</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_proximos_vencer|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_proximos_vencer|format_number|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-calendar-times fa-2x text-gray-300"></i>
@@ -62,7 +63,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                         Stock bajo</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stock_bajo|default:'0' }}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stock_bajo|format_number|default:'0' }}</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
@@ -79,7 +80,7 @@
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                         Valor de inventario</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ valor_inventario|default:'0' }} Bs</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ valor_inventario|format_number|default:'0' }} Bs</div>
                                 </div>
                                 <div class="col-auto">
                                     <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
@@ -162,7 +163,7 @@
                                         <tr>
                                             <td>{{ lote.medicamento }}</td>
 <td>
-    <span class="badge {% if lote.cantidad > 10 %}bg-success{% elif lote.cantidad > 5 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.cantidad }}</span>
+    <span class="badge {% if lote.cantidad > 10 %}bg-success{% elif lote.cantidad > 5 %}bg-warning{% else %}bg-danger{% endif %}">{{ lote.cantidad|format_number }}</span>
 </td>
 <td>{{ lote.fecha_vencimiento }}</td>
 <td>
