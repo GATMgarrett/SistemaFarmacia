@@ -50,7 +50,27 @@
         </li>
       </ul>
 
-      
+      <!-- Right navbar links -->
+      <ul class="navbar-nav ml-auto">
+        <!-- User Account Menu -->
+        <li class="nav-item dropdown">
+          <a class="nav-link" data-toggle="dropdown" href="#">
+            <i class="far fa-user mr-1"></i> {{ user.username }}
+            <i class="fas fa-caret-down ml-1"></i>
+          </a>
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+            <span class="dropdown-item dropdown-header">Sesión de {{ user.username }}</span>
+            <div class="dropdown-divider"></div>
+            <a href="{% url 'UpdateUsuarios' user.id %}" class="dropdown-item">
+              <i class="fas fa-user-edit mr-2"></i> Editar perfil
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="{% url 'logout' %}" class="dropdown-item">
+              <i class="fas fa-sign-out-alt mr-2"></i> Cerrar sesión
+            </a>
+          </div>
+        </li>
+      </ul>
     </nav>
     <!-- /.navbar -->
 
@@ -197,23 +217,6 @@
               </a>
             </li>
             {% endif %}
-
-            <li class="nav-header">SISTEMA</li>
-
-            <li class="nav-item">
-              <a href="{% url 'login' %}" class="nav-link">
-                <i class=" nav-icon fas fa-globe"></i>
-                <p>Cerrar sesion</p>
-              </a>
-            </li>
-
-            <li class="nav-header">BIENVENIDO:</li>
-            <li class="nav-item">
-              <a href="" class="nav-link">
-                <i class="nav-icon fas fa-user"></i>
-                <P>{{ user.username }}</P>
-              </a>
-            </li>
 
           </ul>
         </nav>

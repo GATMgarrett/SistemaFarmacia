@@ -5,7 +5,8 @@ from .auth_views import login_view, verify_code_view, resend_code_view
 
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import user_passes_test, login_required
+from django.contrib.auth.views import LogoutView
 
 def is_admin(user):
     # Verifica si el usuario tiene el grupo 'Administrador'
@@ -68,11 +69,11 @@ urlpatterns = [
     path('Dashboard/Usuarios/', views.dashboard_view_usuarios, name='Dashboard_usuarios'),
     path('Dashboard/Predicciones/', views.dashboard_view_predicciones, name='Dashboard_predicciones'),
     
-    # Vistas para el login con 2FA
-    path('login/', login_view, name='login'),  # Mantener esta URL para compatibilidad
+    # Vistas para autenticación
+    path('login/', login_view, name='login'),
     path('verify-code/', verify_code_view, name='verify_code'),
     path('resend-code/', resend_code_view, name='resend_code'),
-    #path('logout/', views.logout_view, name='logout'),
+    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
     
     # Vista para la Facturación
     path('facturas/', views.facturas_view, name='facturas'),

@@ -168,22 +168,34 @@ def create_user_view(request):
 # Vista para la edición de los usuarios
 @login_required
 def update_user_view(request, id):
+    # Solo permitir a los usuarios editar su propio perfil o a los administradores editar cualquier perfil
+    if not (request.user.is_superuser or request.user.id == int(id)):
+        messages.error(request, 'No tienes permiso para editar este perfil.')
+        return redirect('Ventas')  # Redirigir a la página principal
+        
     usuario = get_object_or_404(User, pk=id)
     
     if request.method == 'POST':
         form = UsuarioForm(request.POST, instance=usuario)
         if form.is_valid():
             user = form.save()  # Usará el método save personalizado
-            messages.success(request, 'Usuario actualizado correctamente')
+            messages.success(request, 'Perfil actualizado correctamente')
+            # Si el usuario está editando su propio perfil, redirigir a la página de perfil
+            if request.user.id == int(id):
+                return redirect('UpdateUsuarios', id=user.id)
             return redirect('Usuarios')
     else:
         form = UsuarioForm(instance=usuario)
         # Limpiar el campo de contraseña en el GET
         form.fields['password'].initial = ''
+        # Si no es administrador, ocultar el campo de grupo
+        if not request.user.is_superuser:
+            form.fields.pop('grupo', None)
     
     return render(request, 'usuariosCRUD/update_user.html', {
         'form': form,
-        'usuario': usuario
+        'usuario': usuario,
+        'es_edicion_propia': str(request.user.id) == str(id)
     })
 
 # Vista para la eliminación de los usuarios
