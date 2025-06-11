@@ -330,24 +330,163 @@
     });
   </script>
 
-  <!-- Agregar este código en la parte inferior de tu plantilla, antes de cerrar la etiqueta </body> -->
-  <script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
-    
-    // Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyAO-jbPHYiHU2wEmDPDgAjnsl5YCz-AIGg",
-      authDomain: "sistemafarmacia-87e60.firebaseapp.com",
-      projectId: "sistemafarmacia-87e60",
-      storageBucket: "sistemafarmacia-87e60.firebasestorage.app",
-      messagingSenderId: "33840948655",
-      appId: "1:33840948655:web:ac0941dd49a8f11275bb5a",
-      measurementId: "G-Z3D6KR6JQQ"
-    };
+<!-- Scripts de Firebase para la sincronización con la app móvil -->
+<!-- Firebase App (obligatorio) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 
-  </script>
+<!-- Firebase Firestore -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+  // Configuración de Firebase - OBLIGATORIO PARA QUE FUNCIONE
+  const firebaseConfig = {
+    apiKey: "AIzaSyAO-jbPHYiHU2wEmDPDgAjnsl5YCz-AIGg",
+    authDomain: "sistemafarmacia-87e60.firebaseapp.com",
+    projectId: "sistemafarmacia-87e60",
+    storageBucket: "sistemafarmacia-87e60.appspot.com",
+    messagingSenderId: "33840948655",
+    appId: "1:33840948655:web:ac0941dd49a8f11275bb5a",
+    measurementId: "G-Z3D6KR6JQQ"
+  };
+
+  // Inicializar Firebase
+  firebase.initializeApp(firebaseConfig);
+  
+  // Comprobar que Firebase está funcionando
+  console.log("Firebase inicializado correctamente", firebase);
+  
+  // Función global para sincronizar datos
+  function sincronizarDatosFirebase() {
+    alert('Iniciando sincronización con Firebase...');
+    try {
+      const db = firebase.firestore();
+      
+      // Recopilar todos los datos
+      let contadorEnviados = 0;
+      let contadorMedVencer = 0;
+      let contadorStockDemanda = 0;
+      
+      // 1. Sincronizar medicamentos próximos a vencer
+      const tablaMedVencer = document.querySelector('#tabla_proximos_vencer');
+      if (tablaMedVencer) {
+        const filas = tablaMedVencer.querySelectorAll('tbody tr');
+        filas.forEach((fila, index) => {
+          const celdas = fila.querySelectorAll('td');
+          if (celdas.length >= 6) {
+            const medicamento = {
+              nombre: celdas[0].textContent.trim(),
+              cantidad: celdas[1].textContent.trim(),
+              fechaVencimiento: celdas[2].textContent.trim(),
+              diasRestantes: celdas[3].textContent.trim(),
+              loteId: celdas[4].textContent.trim(),
+              fabricante: celdas[5].textContent.trim(),
+              timestamp: new Date()
+            };
+            
+            // ID único para evitar duplicados
+            const docId = `med_${medicamento.loteId}_${index}`;
+            
+            db.collection('medicamentos_proximos_vencer').doc(docId).set(medicamento)
+              .then(() => {
+                console.log(`Medicamento vencimiento enviado: ${medicamento.nombre}`);
+                contadorMedVencer++;
+                contadorEnviados++;
+              })
+              .catch(err => console.error('Error al enviar medicamento:', err));
+          }
+        });
+        console.log(`Procesados ${filas.length} medicamentos próximos a vencer`);
+      } else {
+        console.log('No se encontró la tabla de medicamentos próximos a vencer');
+      }
+      
+      // 2. Sincronizar medicamentos con mayor diferencia stock-demanda
+      const tablaStockDemanda = document.querySelector('#tabla_diferencia_stock');
+      if (tablaStockDemanda) {
+        const filas = tablaStockDemanda.querySelectorAll('tbody tr');
+        filas.forEach((fila, index) => {
+          const celdas = fila.querySelectorAll('td');
+          if (celdas.length >= 9) {  // La tabla tiene 9 columnas
+            const medicamento = {
+              id: celdas[0].textContent.trim(),
+              nombre: celdas[1].textContent.trim(),
+              stock_actual: celdas[2].textContent.trim(),
+              mes1_cantidad: celdas[3].textContent.trim(),
+              mes2_cantidad: celdas[4].textContent.trim(),
+              mes3_cantidad: celdas[5].textContent.trim(),
+              total_prediccion: celdas[6].textContent.trim(),
+              promedio_mensual: celdas[7].textContent.trim(),
+              diferencia: celdas[8].textContent.trim(),
+              timestamp: new Date()
+            };
+            
+            // ID único para evitar duplicados (usando el nombre del medicamento)
+            const docId = `diff_stock_${medicamento.nombre.replace(/\s+/g, '_')}`;
+            
+            db.collection('medicamentos_diferencia_stock').doc(docId).set(medicamento)
+              .then(() => {
+                console.log(`Medicamento diferencia stock enviado: ${medicamento.nombre}`);
+                contadorStockDemanda++;
+                contadorEnviados++;
+              })
+              .catch(err => console.error('Error al enviar medicamento diferencia stock:', err));
+          }
+        });
+        console.log(`Procesados ${filas.length} medicamentos diferencia stock-demanda`);
+      } else {
+        console.log('No se encontró la tabla de medicamentos con diferencia stock-demanda');
+      }
+      
+      // 3. Sincronizar usuarios (solo nombre y correo)
+      // Primero, buscar en el navbar el usuario actual
+      const userElement = document.querySelector('#navbarDropdown');
+      if (userElement) {
+        const username = userElement.textContent.trim();
+        // Buscar correo electrónico o generar uno basado en el nombre
+        let email = username.toLowerCase().replace(/\s+/g, '.') + '@farmacia.com';
+        
+        // Ver si podemos encontrar el correo real en alguna parte de la página
+        const emailElements = Array.from(document.querySelectorAll('span, div, p'));
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+        
+        for (const elem of emailElements) {
+          const match = elem.textContent.match(emailRegex);
+          if (match) {
+            email = match[0];
+            break;
+          }
+        }
+        
+        // Generar un ID único basado en el nombre de usuario
+        const userId = `user_${username.toLowerCase().replace(/\s+/g, '_')}`;
+        
+        const userData = {
+          nombre: username,
+          email: email,
+          timestamp: new Date()
+        };
+        
+        db.collection('usuarios').doc(userId).set(userData)
+          .then(() => {
+            console.log(`Usuario enviado: ${username} con correo ${email}`);
+            contadorEnviados++;
+          })
+          .catch(err => console.error('Error al enviar usuario:', err));
+      }
+      
+      // Mostrar resultado final después de un tiempo
+      setTimeout(() => {
+        let mensaje = `Sincronización completada:\n- ${contadorMedVencer} medicamentos próximos a vencer\n- ${contadorStockDemanda} medicamentos diferencia stock\n- 1 usuario`;
+        console.log(mensaje);
+        alert(mensaje);
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error en sincronización:', error);
+      alert('Error en la sincronización: ' + error.message);
+    }
+  }
+</script>
 
 </body>
 

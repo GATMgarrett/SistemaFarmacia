@@ -16,6 +16,9 @@
                 <button class="btn btn-light btn-sm" id="refreshData">
                     <i class="fas fa-sync-alt"></i> Actualizar datos
                 </button>
+                <button onclick="sincronizarDatosFirebase()" class="btn btn-primary btn-sm ml-2" id="btn-sincronizar-firebase" style="margin-left: 10px;">
+                    <i class="fas fa-cloud-upload-alt"></i> Sincronizar con App
+                </button>
             </div>
         </div>
         
@@ -146,7 +149,7 @@
                         <div class="card-body">
                             <div class="table-responsive">
                                 {% if medicamentos_proximos_a_vencer %}
-                                <table class="table table-hover table-striped">
+                                <table id="tabla_proximos_vencer" class="table table-hover table-striped">
                                     <thead class="table-danger">
                                         <tr>
                                             <th>Medicamento</th>
