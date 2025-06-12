@@ -1,0 +1,33 @@
+{% load static %}
+
+<!-- Solo campos del formulario, sin tag <form> ni botones -->
+{% for campo in form %}
+<div class="mb-3">
+  <label for="id_{{ campo.name }}" class="form-label">{{ campo.label }}:</label>
+  
+  {% if campo.name == 'grupo' %}
+    <select name="{{ campo.name }}" id="id_{{ campo.name }}" class="form-control django-select2">
+      {% for group in campo.field.queryset %}
+        <option value="{{ group.id }}" {% if campo.value == group.id %} selected {% endif %}>{{ group.name }}</option>
+      {% endfor %}
+    </select>
+    
+  {% elif campo.name == 'password' %}
+    <!-- Omitimos el campo de contraseña -->
+    
+  {% else %}
+    <input 
+      type="{{ campo.field.widget.input_type }}"
+      class="form-control" 
+      name="{{ campo.name }}" 
+      id="id_{{ campo.name }}" 
+      aria-describedby="helpId_{{ campo.name }}" 
+      placeholder="{{ campo.label }}"
+      value="{{ campo.value|default_if_none:'' }}"
+    >
+  {% endif %}
+  
+  <small id="helpId_{{ campo.name }}" class="form-text text-muted">{{ campo.help_text }}</small>
+  <div class="col-12 help-text">{{ campo.errors }}</div>
+</div>
+{% endfor %}

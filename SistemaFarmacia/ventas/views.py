@@ -198,6 +198,36 @@ def update_user_view(request, id):
         'es_edicion_propia': str(request.user.id) == str(id)
     })
 
+# Vista para la edición de los usuarios sin campo de contraseña
+@login_required
+def update_user_basic_view(request, id):
+    # Solo permitir a los administradores editar cualquier perfil con esta vista
+    if not request.user.is_superuser:
+        messages.error(request, 'No tienes permiso para editar este perfil.')
+        return redirect('Ventas')  # Redirigir a la página principal
+        
+    usuario = get_object_or_404(User, pk=id)
+    
+    if request.method == 'POST':
+        form = UsuarioForm(request.POST, instance=usuario)
+        if form.is_valid():
+            # Aseguramos que no se modifica la contraseña desde esta vista
+            form.cleaned_data['password'] = ''
+            user = form.save()  # Usará el método save personalizado
+            messages.success(request, 'Perfil actualizado correctamente')
+            return redirect('Usuarios')
+    else:
+        form = UsuarioForm(instance=usuario)
+        # Limpiar el campo de contraseña
+        form.fields['password'].initial = ''
+        # Ocultamos el campo de contraseña del form (aunque igualmente se renderizará en otra plantilla sin este campo)
+        form.fields['password'].widget = form.fields['password'].hidden_widget()
+    
+    return render(request, 'usuariosCRUD/update_user_basic.html', {
+        'form': form,
+        'usuario': usuario
+    })
+
 # Vista para la eliminación de los usuarios
 def delete_user_view(request, id):
     usuario = User.objects.get(id=id)

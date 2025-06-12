@@ -39,6 +39,7 @@ urlpatterns = [
     path('usuario/create/', user_passes_test(is_admin)(views.create_user_view), name='CreateUsuarios'),
     path('deleteUsuario/<int:id>', views.delete_user_view, name='DeleteUsuarios'),
     path('usuario/update/<int:id>', views.update_user_view, name='UpdateUsuarios'),
+    path('usuario/update_basic/<int:id>', views.update_user_basic_view, name='UpdateUsuariosBasic'),
     path('activateUsuario/<int:id>', views.activate_user_view, name='ActivateUsuarios'),
     
     # urls for the views of the suppliers (proveedores)
