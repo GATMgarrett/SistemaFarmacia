@@ -38,6 +38,34 @@ class UsuarioForm(forms.ModelForm):
                 user.groups.add(self.cleaned_data["grupo"])
         return user
 
+class UsuarioFormNoPassword(forms.ModelForm):
+    """
+    Form for creating a new user without manual password field.
+    Password will be auto-generated and sent via email.
+    """
+    grupo = forms.ModelChoiceField(
+        queryset=Group.objects.all(),
+        widget=Select2Widget,
+        label='Grupo',
+        required=False
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'first_name', 'last_name', 'email', 'grupo')
+    
+    def save(self, commit=True):
+        # We don't set password here, it will be set in the view
+        user = super(UsuarioFormNoPassword, self).save(commit=False)
+        
+        if commit:
+            user.save()
+            if self.cleaned_data.get("grupo"):
+                # Limpiar grupos existentes y agregar el nuevo
+                user.groups.clear()
+                user.groups.add(self.cleaned_data["grupo"])
+        return user
+
 class LaboratorioForm(forms.ModelForm):
     class Meta:
         model = Laboratorios

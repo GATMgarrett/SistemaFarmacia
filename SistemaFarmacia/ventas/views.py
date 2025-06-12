@@ -27,7 +27,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.db.models.functions import TruncMonth, TruncWeek, TruncDay, TruncYear, ExtractWeekDay
-from .forms import UsuarioForm
+from .forms import UsuarioForm, UsuarioFormNoPassword
 
 # Importaciones de datetime
 from datetime import datetime, date, timedelta
@@ -149,6 +149,10 @@ def usuarios_view(request):
 # Vista para la creación de los usuarios
 @login_required
 def create_user_view(request):
+    """
+    Vista original para crear usuarios con contraseña manual.
+    Mantener para compatibilidad o casos especiales.
+    """
     grupos_usuario = request.user.groups.values_list('name', flat=True)  # Obtén los grupos del usuario
 
     if request.method == 'POST':
@@ -164,6 +168,48 @@ def create_user_view(request):
         formulario = UsuarioForm()  # Crea una nueva instancia del formulario
 
     return render(request, 'usuariosCRUD/create_user.html', {'formulario': formulario, 'grupos': grupos_usuario})
+
+@login_required
+def create_user_secure_view(request):
+    """
+    Vista de creación de usuarios con generación automática de contraseña
+    y envío por correo electrónico para mejorar la seguridad.
+    """
+    grupos_usuario = request.user.groups.values_list('name', flat=True)
+    
+    if request.method == 'POST':
+        formulario = UsuarioFormNoPassword(request.POST)
+        if formulario.is_valid():
+            # Guardar usuario sin commit para poder establecer la contraseña
+            user = formulario.save(commit=False)
+            
+            # Generar contraseña aleatoria segura
+            from .email_utils import generate_random_password, send_user_credentials
+            password = generate_random_password()
+            
+            # Establecer contraseña y guardar usuario
+            user.set_password(password)
+            user.save()
+            
+            # Asignar grupo si se seleccionó
+            if formulario.cleaned_data['grupo']:
+                user.groups.add(formulario.cleaned_data['grupo'])
+            
+            # Enviar credenciales por correo electrónico
+            if user.email:
+                send_result = send_user_credentials(user.email, user.username, password)
+                if send_result:
+                    messages.success(request, f'Usuario {user.username} creado exitosamente. Las credenciales han sido enviadas por correo a {user.email}')
+                else:
+                    messages.warning(request, f'Usuario creado, pero hubo un problema al enviar el correo con las credenciales.')
+            else:
+                messages.warning(request, f'Usuario creado, pero no se pudo enviar el correo porque no tiene dirección de correo electrónico.')
+                
+            return redirect('Usuarios')
+    else:
+        formulario = UsuarioFormNoPassword()
+    
+    return render(request, 'usuariosCRUD/create_user_no_password.html', {'formulario': formulario, 'grupos': grupos_usuario})
 
 # Vista para la edición de los usuarios
 @login_required

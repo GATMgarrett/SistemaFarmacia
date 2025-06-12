@@ -35,8 +35,10 @@ urlpatterns = [
     # urls for the views of the users
     path('usuario/', user_passes_test(is_admin)(views.usuarios_view), name='Usuarios'),
     #path('usuario/', views.usuarios_view, name='Usuarios'),
-    #path('usuario/create/', views.create_user_view, name='CreateUsuarios'),
-    path('usuario/create/', user_passes_test(is_admin)(views.create_user_view), name='CreateUsuarios'),
+    # Nueva ruta segura para crear usuarios con generación automática de contraseña
+    path('usuario/create/', user_passes_test(is_admin)(views.create_user_secure_view), name='CreateUsuarios'),
+    # Mantener la ruta original con otro nombre por si se necesita en algún caso especial
+    path('usuario/create/manual/', user_passes_test(is_admin)(views.create_user_view), name='CreateUsuariosManual'),
     path('deleteUsuario/<int:id>', views.delete_user_view, name='DeleteUsuarios'),
     path('usuario/update/<int:id>', views.update_user_view, name='UpdateUsuarios'),
     path('usuario/update_basic/<int:id>', views.update_user_basic_view, name='UpdateUsuariosBasic'),
