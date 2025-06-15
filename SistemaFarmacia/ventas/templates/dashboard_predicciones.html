@@ -12,8 +12,17 @@
             <h4 class="card-title mb-0">
                 <i class="fas fa-chart-line mr-2"></i> Predicción de Ventas (Redes Bayesianas Dinámicas)
             </h4>
-            <div>
-                <button class="btn btn-light btn-sm" id="refreshData">
+            <div class="d-flex align-items-center gap-2">
+                {% if cache_hit %}
+                <span class="badge bg-success" id="cache-indicator" title="Datos obtenidos del caché - Carga optimizada" style="background-color: #fff !important; color: #28a745 !important; margin-right: 10px;">
+                    <i class="fas fa-rocket"></i> Caché Hit
+                </span>
+                {% else %}
+                <span class="badge bg-warning" id="cache-indicator" title="Datos generados desde la base de datos - Primera carga" style="background-color: #fff !important; color: #ffc107 !important; margin-right: 10px;">
+                    <i class="fas fa-database"></i> Caché Miss
+                </span>
+                {% endif %}
+                <button class="btn btn-light btn-sm" id="refreshData" onclick="location.reload()">
                     <i class="fas fa-sync-alt"></i> Actualizar datos
                 </button>
                 <button onclick="sincronizarDatosFirebase()" class="btn btn-primary btn-sm ml-2" id="btn-sincronizar-firebase" style="margin-left: 10px;">

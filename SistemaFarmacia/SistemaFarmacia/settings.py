@@ -118,6 +118,23 @@ DATABASES = {
 }
 #pero nosotroos para este proyeto queremos usar my sql por lo que esta es la configurcion que vamos a usar
 
+# Cache Configuration
+# https://docs.djangoproject.com/en/4.2/topics/cache/
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300,  # 5 minutos por defecto
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+            'CULL_FREQUENCY': 3,
+        }
+    }
+}
+
+# Session configuration para mejor rendimiento
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_CACHE_ALIAS = 'default'
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -167,9 +184,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
-
-# backend para las sesiones
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # Configuración de correo electrónico para 2FA
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

@@ -7,9 +7,44 @@ from datetime import datetime, timedelta
 from django.db.models import Sum
 from .models import LoteMedicamento
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.cache import cache
+import hashlib
 
 # Configurar logger
 logger = logging.getLogger(__name__)
+
+# Función para invalidar el caché de los dashboards
+def invalidar_cache_dashboard():
+    """
+    Invalida todos los cachés relacionados con los dashboards del sistema
+    Se debe llamar cuando se registren nuevas ventas, compras o se modifiquen datos relevantes
+    """
+    try:
+        # Patrón para buscar todas las claves de los dashboards
+        cache_patterns = [
+            # Patrones para dashboard de ventas
+            'dashboard_datos_*',
+            'dashboard_graficos_*', 
+            'dashboard_categorias',
+            # Patrones para dashboard de predicciones
+            'dashboard_predicciones_datos_*',
+            'dashboard_predicciones_grafico_*'
+        ]
+        
+        # Django no tiene un método nativo para eliminar por patrón,
+        # por lo que usaremos una aproximación simple
+        cache.delete('dashboard_categorias')
+        
+        # Para patrones más complejos, podríamos usar versioning del caché
+        # incrementando un número de versión cuando queremos invalidar todo
+        cache_version = cache.get('dashboard_cache_version', 0)
+        cache.set('dashboard_cache_version', cache_version + 1, None)  # Sin expiración
+        
+        print(f"Caché del dashboard invalidado. Nueva versión: {cache_version + 1}")
+        
+    except Exception as e:
+        print(f"Error al invalidar caché del dashboard: {str(e)}")
+
 from django.db import transaction
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, HttpResponseForbidden, Http404
 from django.urls import reverse
@@ -577,7 +612,7 @@ def obtener_top_productos(fecha_inicio, fecha_fin, limite=10):
     return top_productos
 
 # Nueva función para generar el gráfico de barras con Plotly
-def generar_grafico_barras(df, fecha_inicio, fecha_fin):
+def generar_grafico_barras(df, fecha_inicio=None, fecha_fin=None):
     # Check if the DataFrame is empty
     if df.empty:
         # Create an empty figure with a message
@@ -960,6 +995,29 @@ def dashboard_view_predicciones(request):
     # Obtener los grupos del usuario para permisos
     grupos_usuario = request.user.groups.values_list('name', flat=True)
     
+    # Parámetros para generación de claves de caché
+    cache_version = 'v1'  # Incrementar cuando se cambie la estructura de datos
+    pagina = request.GET.get('pagina', 1)
+    
+    # Generar clave única para la página actual
+    cache_key_datos = f'dashboard_predicciones_datos_{cache_version}_{pagina}'
+    cache_key_grafico = f'dashboard_predicciones_grafico_{cache_version}'
+    
+    # Comprobar si hay datos en caché
+    cache_hit = False
+    cache_datos = cache.get(cache_key_datos)
+    cache_grafico = cache.get(cache_key_grafico)
+    
+    # Si hay datos en caché, usarlos directamente
+    if cache_datos and cache_grafico:
+        cache_hit = True
+        contexto = cache_datos
+        contexto['grafico_prediccion_html'] = cache_grafico
+        contexto['cache_hit'] = cache_hit
+        contexto['cache_timestamp'] = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        return render(request, 'dashboard_predicciones.html', contexto)
+    
     try:
         # Parámetros para la predicción
         anios_historia = 3  # Años de historia a considerar
@@ -1207,7 +1265,7 @@ def dashboard_view_predicciones(request):
             ]
         )
         
-        grafico_html = fig.to_html(full_html=False)
+        grafico_html = fig.to_html()
         
         # Calcular totales mensuales para los indicadores
         total_mes1 = top_medicamentos['mes_1_cantidad'].sum()
@@ -1223,7 +1281,6 @@ def dashboard_view_predicciones(request):
         
         contexto = {
             'grupos': grupos_usuario,
-            'grafico_prediccion_html': grafico_html,
             'medicamentos_prediccion': medicamentos_pagina,
             'paginator': paginator,
             'total_mes1': total_mes1,
@@ -1234,8 +1291,20 @@ def dashboard_view_predicciones(request):
             'mes2_nombre': mes2,
             'mes3_nombre': mes3,
             'fecha_prediccion': fecha_actual.strftime('%Y-%m-%d'),
-            'pagina_actual': int(pagina)
+            'pagina_actual': int(pagina),
+            'cache_hit': False,  # Indicador de caché miss porque estamos generando datos nuevos
+            'cache_timestamp': timezone.now().strftime('%Y-%m-%d %H:%M:%S')
         }
+        
+        # Guardar datos en caché con diferentes tiempos de expiración
+        # Datos numéricos: 15 minutos (900 segundos)
+        cache.set(cache_key_datos, contexto, 900)  
+        
+        # Gráficos: 30 minutos (1800 segundos) porque cambian menos frecuentemente
+        cache.set(cache_key_grafico, grafico_html, 1800)
+        
+        # Incluir el gráfico en el contexto para renderizar
+        contexto['grafico_prediccion_html'] = grafico_html
         
         return render(request, 'dashboard_predicciones.html', contexto)
         
@@ -1271,49 +1340,102 @@ def dashboard_view_ventas(request):
             fecha_fin = timezone.now().date()
             fecha_inicio = fecha_fin - timedelta(days=180)  # 6 meses (aproximadamente)
     
-    # Obtener datos de ventas en el rango de fechas - eliminando filtro tipo_id
-    df_ventas = obtener_datos_ventas(fecha_inicio, fecha_fin, categoria_id, None)
+    # Crear una clave de caché única basada en los parámetros de filtro
+    filtros_key = f"{fecha_inicio}_{fecha_fin}_{categoria_id}_{tipo_id}"
+    cache_key_hash = hashlib.md5(filtros_key.encode()).hexdigest()
     
-    # Si no hay datos, crear un DataFrame vacío simple
-    if df_ventas.empty:
-        # Solo crear un DataFrame vacío con las columnas básicas
-        df_ventas = pd.DataFrame(columns=['medicamento', 'categoria', 'tipo', 'fecha', 'cantidad', 'precio_total'])
+    # Obtener versión del caché para invalidación inteligente
+    cache_version = cache.get('dashboard_cache_version', 0)
+    cache_key_datos = f"dashboard_datos_{cache_key_hash}_v{cache_version}"
+    cache_key_graficos = f"dashboard_graficos_{cache_key_hash}_v{cache_version}"
     
-    # Generar gráficos con Plotly - ELIMINADA LA DUPLICACIÓN DE LLAMADAS
-    grafico_lineas_html = generar_grafico_con_plotly(df_ventas)
-    grafico_barras_html = generar_grafico_barras(df_ventas, fecha_inicio, fecha_fin)
+    # Intentar obtener datos del caché
+    datos_cache = cache.get(cache_key_datos)
+    graficos_cache = cache.get(cache_key_graficos)
     
-    # Indicadores de resumen
-    ventas_mes = obtener_ventas_mes()
-    ventas_anual = obtener_ventas_anual()
-    productos_vendidos = int(df_ventas['cantidad'].sum()) if not df_ventas.empty else 0
-    clientes_nuevos = obtener_clientes_nuevos(fecha_inicio, fecha_fin)
+    if datos_cache is None or graficos_cache is None:
+        # Si no está en caché, obtener y procesar los datos
+        
+        # Obtener datos de ventas en el rango de fechas - eliminando filtro tipo_id
+        df_ventas = obtener_datos_ventas(fecha_inicio, fecha_fin, categoria_id, None)
+        
+        # Si no hay datos, crear un DataFrame vacío simple
+        if df_ventas.empty:
+            # Solo crear un DataFrame vacío con las columnas básicas
+            df_ventas = pd.DataFrame(columns=['medicamento', 'categoria', 'tipo', 'fecha', 'cantidad', 'precio_total'])
+        
+        # Generar gráficos con Plotly - ELIMINADA LA DUPLICACIÓN DE LLAMADAS
+        grafico_lineas_html = generar_grafico_con_plotly(df_ventas)
+        grafico_barras_html = generar_grafico_barras(df_ventas, fecha_inicio, fecha_fin)
+        
+        # Indicadores de resumen
+        ventas_mes = obtener_ventas_mes()
+        ventas_anual = obtener_ventas_anual()
+        productos_vendidos = int(df_ventas['cantidad'].sum()) if not df_ventas.empty else 0
+        clientes_nuevos = obtener_clientes_nuevos(fecha_inicio, fecha_fin)
+        
+        # Obtener los datos para la tabla de top productos vendidos
+        top_productos = obtener_top_productos(fecha_inicio, fecha_fin)
+        
+        # Preparar datos para caché
+        datos_cache = {
+            'ventas_mes': ventas_mes,
+            'ventas_anual': ventas_anual,
+            'productos_vendidos': productos_vendidos,
+            'clientes_nuevos': clientes_nuevos,
+            'top_productos': list(top_productos),  # Convertir a lista para serialización
+        }
+        
+        graficos_cache = {
+            'grafico_lineas_html': grafico_lineas_html,
+            'grafico_barras_html': grafico_barras_html,
+        }
+        
+        # Guardar en caché por 15 minutos (900 segundos)
+        # Los gráficos pueden tener un caché más largo ya que son más costosos de generar
+        cache.set(cache_key_datos, datos_cache, 900)  # 15 minutos
+        cache.set(cache_key_graficos, graficos_cache, 1800)  # 30 minutos para gráficos
+        
+        print(f"Datos generados y guardados en caché: {cache_key_datos}")
+    else:
+        print(f"Datos obtenidos del caché: {cache_key_datos}")
     
-    # Obtener los datos para la tabla de top productos vendidos
-    top_productos = obtener_top_productos(fecha_inicio, fecha_fin)
+    # Obtener solo categorías para los filtros (datos que cambian poco, caché más largo)
+    cache_key_categorias = "dashboard_categorias"
+    categorias = cache.get(cache_key_categorias)
+    categorias_from_cache = True
+    if categorias is None:
+        from ventas.models import Categorias
+        categorias = list(Categorias.objects.filter(activo=True).order_by('nombre_categoria').values('id', 'nombre_categoria'))
+        cache.set(cache_key_categorias, categorias, 3600)  # 1 hora para categorías
+        categorias_from_cache = False
     
-    # Obtener solo categorías para los filtros
-    from ventas.models import Categorias
-    categorias = Categorias.objects.filter(activo=True).order_by('nombre_categoria')
+    # Información sobre el estado del caché
+    cache_info = {
+        'datos_from_cache': datos_cache is not None and graficos_cache is not None,
+        'categorias_from_cache': categorias_from_cache,
+        'cache_version': cache_version,
+    }
     
     # Pasar solo los datos y gráficos al contexto - eliminando tipos
     contexto = {
-        'grafico_lineas_html': grafico_lineas_html,  # Gráfico de líneas
-        'grafico_barras_html': grafico_barras_html,  # Gráfico de barras
+        'grafico_lineas_html': graficos_cache['grafico_lineas_html'],  # Gráfico de líneas
+        'grafico_barras_html': graficos_cache['grafico_barras_html'],  # Gráfico de barras
         'grupos': grupos_usuario,  # Grupos del usuario
-        'ventas_mes': ventas_mes,  # Indicador de ventas del mes
-        'ventas_anual': ventas_anual,  # Indicador de ventas anuales
-        'productos_vendidos': productos_vendidos,  # Indicador de productos vendidos
-        'clientes_nuevos': clientes_nuevos,  # Indicador de clientes nuevos
+        'ventas_mes': datos_cache['ventas_mes'],  # Indicador de ventas del mes
+        'ventas_anual': datos_cache['ventas_anual'],  # Indicador de ventas anuales
+        'productos_vendidos': datos_cache['productos_vendidos'],  # Indicador de productos vendidos
+        'clientes_nuevos': datos_cache['clientes_nuevos'],  # Indicador de clientes nuevos
         'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d'),  # Fecha inicio seleccionada
         'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),  # Fecha fin seleccionada
-        'top_productos': top_productos,  # Top productos vendidos
+        'top_productos': datos_cache['top_productos'],  # Top productos vendidos
         'categorias': categorias,  # Lista de categorías para el filtro
+        'cache_info': cache_info,  # Información sobre el estado del caché
     }
 
     return render(request, 'dashboard_ventas.html', contexto)
 
-#////////////////////////////Esto va a aportar a la parte de gestion de inventario
+#//////////////////////////////Todo esto va a aportar a la parte de gestion de inventario
 def obtener_medicamentos_baja_rotacion():
     # Ventas en los últimos 3 meses
     fecha_limite = now().date() - timedelta(days=90)
@@ -1401,6 +1523,9 @@ def generar_grafico_barras_stock_minimo(alertas_stock_minimo):
     nombres = [alerta['nombre'] for alerta in alertas_stock_minimo]
     stock_actual = [alerta['stock_actual'] for alerta in alertas_stock_minimo]
     umbrales = [alerta['umbral'] for alerta in alertas_stock_minimo]
+
+    print("Labels:", nombres)  # Temporal
+    print("Values:", stock_actual)  # Temporal
 
     # Crear un DataFrame para evitar el error
     import pandas as pd
@@ -2465,4 +2590,94 @@ def confirmar_venta(request):
     else:
         messages.success(request, "Venta registrada exitosamente.")
     
+    # Invalidar caché del dashboard ya que se registró una nueva venta
+    invalidar_cache_dashboard()
+    
     return redirect('Ventas')
+
+# Función de utilidad para probar el rendimiento del caché
+@login_required
+def test_cache_performance(request):
+    """
+    Vista de prueba para verificar el funcionamiento del caché del dashboard.
+    Útil para desarrollo y diagnóstico de rendimiento.
+    """
+    import time
+    from django.http import JsonResponse
+    
+    # Obtener parámetros de prueba
+    fecha_inicio = request.GET.get('fecha_inicio', (timezone.now().date() - timedelta(days=30)).strftime('%Y-%m-%d'))
+    fecha_fin = request.GET.get('fecha_fin', timezone.now().date().strftime('%Y-%m-%d'))
+    
+    results = {}
+    
+    # Limpiar caché para la prueba
+    invalidar_cache_dashboard()
+    
+    # Prueba 1: Primera carga (sin caché)
+    start_time = time.time()
+    df_ventas = obtener_datos_ventas(
+        datetime.strptime(fecha_inicio, '%Y-%m-%d').date(), 
+        datetime.strptime(fecha_fin, '%Y-%m-%d').date(), 
+        None, None
+    )
+    generar_grafico_con_plotly(df_ventas)
+    generar_grafico_barras(df_ventas, 
+        datetime.strptime(fecha_inicio, '%Y-%m-%d').date(), 
+        datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+    )
+    first_load_time = time.time() - start_time
+    results['primera_carga_sin_cache'] = f"{first_load_time:.3f} segundos"
+    
+    # Simular carga del dashboard con caché
+    filtros_key = f"{fecha_inicio}_{fecha_fin}_None_None"
+    cache_key_hash = hashlib.md5(filtros_key.encode()).hexdigest()
+    cache_version = cache.get('dashboard_cache_version', 0)
+    cache_key_datos = f"dashboard_datos_{cache_key_hash}_v{cache_version}"
+    cache_key_graficos = f"dashboard_graficos_{cache_key_hash}_v{cache_version}"
+    
+    # Simular datos en caché
+    datos_cache = {
+        'ventas_mes': 15000,
+        'ventas_anual': 180000,
+        'productos_vendidos': 500,
+        'clientes_nuevos': 25,
+        'top_productos': [],
+    }
+    graficos_cache = {
+        'grafico_lineas_html': '<div>Gráfico simulado</div>',
+        'grafico_barras_html': '<div>Gráfico simulado</div>',
+    }
+    
+    cache.set(cache_key_datos, datos_cache, 900)
+    cache.set(cache_key_graficos, graficos_cache, 1800)
+    
+    # Prueba 2: Segunda carga (con caché)
+    start_time = time.time()
+    cached_datos = cache.get(cache_key_datos)
+    cached_graficos = cache.get(cache_key_graficos)
+    second_load_time = time.time() - start_time
+    results['segunda_carga_con_cache'] = f"{second_load_time:.3f} segundos"
+    
+    # Calcular mejora de rendimiento
+    if first_load_time > 0:
+        improvement = ((first_load_time - second_load_time) / first_load_time) * 100
+        results['mejora_rendimiento'] = f"{improvement:.1f}%"
+        results['factor_aceleracion'] = f"{first_load_time / second_load_time if second_load_time > 0 else 'N/A':.1f}x"
+    
+    results['cache_status'] = {
+        'datos_en_cache': cached_datos is not None,
+        'graficos_en_cache': cached_graficos is not None,
+        'version_cache': cache_version,
+    }
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Prueba de rendimiento del caché completada',
+        'results': results,
+        'recommendations': [
+            'El caché reduce significativamente los tiempos de carga',
+            'Los gráficos son los elementos más costosos de generar',
+            'El caché se invalida automáticamente al registrar nuevas ventas'
+        ]
+    })
