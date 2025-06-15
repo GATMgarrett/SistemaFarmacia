@@ -2,8 +2,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.contrib.auth.hashers import make_password
 from .models_2fa import VerificationCode
-from .email_utils import send_verification_email
+from .email_utils import send_verification_email, send_reset_password_email, generate_random_password
 from django.urls import reverse
 
 def login_view(request):
@@ -148,3 +149,49 @@ def resend_code_view(request):
     except User.DoesNotExist:
         # Usuario no existe
         return redirect('login')
+
+def reset_password_view(request):
+    """
+    Vista para manejar la solicitud de restablecimiento de contraseña
+    """
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        
+        try:
+            # Verificar si existe el usuario y si el correo coincide
+            user = User.objects.get(username=username)
+            
+            if user.email == email:
+                # Generar una nueva contraseña aleatoria
+                new_password = generate_random_password(10)
+                
+                # Actualizar la contraseña del usuario
+                user.password = make_password(new_password)
+                user.save()
+                
+                # Enviar la nueva contraseña por correo
+                if send_reset_password_email(email, username, new_password):
+                    # Mostrar mensaje de éxito
+                    return render(request, 'registration/login.html', {
+                        'password_reset_message': 'Se ha enviado una nueva contraseña a su correo electrónico.'
+                    })
+                else:
+                    # Error al enviar el correo
+                    return render(request, 'registration/login.html', {
+                        'error_message': 'Error al enviar el correo electrónico. Intente nuevamente más tarde.'
+                    })
+            else:
+                # El correo no coincide con el usuario
+                return render(request, 'registration/login.html', {
+                    'error_message': 'El correo electrónico no coincide con el usuario proporcionado.'
+                })
+                
+        except User.DoesNotExist:
+            # Usuario no existe
+            return render(request, 'registration/login.html', {
+                'error_message': 'El nombre de usuario no existe en el sistema.'
+            })
+    
+    # Si es una petición GET, redirigir al formulario de login
+    return redirect('login')

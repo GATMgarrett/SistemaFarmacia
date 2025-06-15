@@ -1,7 +1,7 @@
 from django.urls import path
 #con esto vamos a importar las vistas (ventas\views.py)
 from . import views
-from .auth_views import login_view, verify_code_view, resend_code_view
+from .auth_views import login_view, verify_code_view, resend_code_view, reset_password_view
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -76,6 +76,7 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('verify-code/', verify_code_view, name='verify_code'),
     path('resend-code/', resend_code_view, name='resend_code'),
+    path('reset-password/', reset_password_view, name='reset_password'),
     path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
     
     # Vista para la Facturación

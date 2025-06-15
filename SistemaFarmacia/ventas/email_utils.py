@@ -131,3 +131,58 @@ def send_verification_email(user_email, verification_code):
     except Exception as e:
         print(f"Error al enviar correo: {e}")
         return False
+
+def send_reset_password_email(user_email, username, new_password):
+    """
+    Envía un correo electrónico con la nueva contraseña generada
+    """
+    # Configuración del servidor SMTP
+    smtp_server = settings.EMAIL_HOST
+    smtp_port = settings.EMAIL_PORT
+    smtp_user = settings.EMAIL_HOST_USER
+    smtp_password = settings.EMAIL_HOST_PASSWORD
+    
+    # Crear el mensaje
+    message = MIMEMultipart()
+    message['From'] = smtp_user
+    message['To'] = user_email
+    message['Subject'] = 'Farmacia Yasney - Restablecimiento de Contraseña'
+    
+    # Contenido del mensaje
+    html = f'''
+    <html>
+    <body>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+            <h2 style="color: #007bff; text-align: center;">Farmacia Yasney</h2>
+            <p>Estimado(a) {username},</p>
+            <p>Hemos recibido una solicitud para restablecer su contraseña. Su nueva contraseña temporal es:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; margin: 20px 0;">
+                {new_password}
+            </div>
+            <p>Por razones de seguridad, le recomendamos cambiar esta contraseña después de iniciar sesión.</p>
+            <p>Si usted no solicitó este cambio de contraseña, por favor contacte al administrador del sistema inmediatamente.</p>
+            <p>Saludos,<br>El equipo de Farmacia Yasney</p>
+        </div>
+    </body>
+    </html>
+    '''
+    
+    message.attach(MIMEText(html, 'html'))
+    
+    try:
+        # Establecer conexión con el servidor SMTP
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Iniciar TLS para seguridad
+        server.login(smtp_user, smtp_password)
+        
+        # Enviar correo
+        text = message.as_string()
+        server.sendmail(smtp_user, user_email, text)
+        
+        # Cerrar la conexión
+        server.quit()
+        
+        return True
+    except Exception as e:
+        print(f"Error al enviar correo de restablecimiento: {e}")
+        return False
